@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Business Card - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <a href="{{ url_for('admin_dashboard') }}">&larr; Clients</a>
+    <h1 style="margin-top:8px">My Business Card</h1>
+    <p class="muted">This is your shareable digital business card (with QR code, Save to Contacts, and Send by Text). <a href="{{ url_for('card') }}" target="_blank" rel="noopener">Open / preview the card</a>.</p>
+
+    <form method="post" enctype="multipart/form-data">
+        <div class="row2">
+            <div>
+                <label>Cover Banner (optional)</label>
+                {% if d.banner %}<div><img src="{{ d.banner }}" style="max-height:80px;border-radius:10px;border:1px solid var(--border)"></div>{% endif %}
+                <input type="file" name="card_banner" accept="image/*">
+                {% if d.banner %}<label style="font-weight:500"><input type="checkbox" name="remove_banner" style="width:auto"> Remove banner</label>{% endif %}
+            </div>
+            <div>
+                <label>Profile Photo (optional)</label>
+                {% if d.photo %}<div><img src="{{ d.photo }}" style="height:72px;width:72px;object-fit:cover;border-radius:50%;border:1px solid var(--border)"></div>{% endif %}
+                <input type="file" name="card_photo" accept="image/*">
+                {% if d.photo %}<label style="font-weight:500"><input type="checkbox" name="remove_photo" style="width:auto"> Remove photo</label>{% endif %}
+            </div>
+        </div>
+        <p class="muted" style="font-size:13px">Keep each image under 1.5 MB.</p>
+
+        <div class="row2">
+            <div>
+                <label>Business Name</label>
+                <input name="card_business_name" value="{{ d.card_business_name }}">
+            </div>
+            <div>
+                <label>Your Name</label>
+                <input name="card_contact_name" value="{{ d.card_contact_name }}">
+            </div>
+        </div>
+        <label>Title / Role</label>
+        <input name="card_title" value="{{ d.card_title }}" placeholder="e.g. Licensed Massage Therapist">
+        <label>Tagline / Short description</label>
+        <input name="card_tagline" value="{{ d.card_tagline }}" placeholder="e.g. Therapeutic & relaxation massage">
+
+        <div class="row2">
+            <div>
+                <label>Phone</label>
+                <input name="card_phone" type="tel" value="{{ d.card_phone }}">
+            </div>
+            <div>
+                <label>Email</label>
+                <input name="card_email" type="email" value="{{ d.card_email }}">
+            </div>
+        </div>
+        <label>Website</label>
+        <input name="card_website" value="{{ d.card_website }}" placeholder="www.yoursite.com">
+        <label>Address</label>
+        <input name="card_address" value="{{ d.card_address }}">
+        <div class="row2">
+            <div>
+                <label>Instagram</label>
+                <input name="card_instagram" value="{{ d.card_instagram }}" placeholder="@yourhandle">
+            </div>
+            <div>
+                <label>Facebook</label>
+                <input name="card_facebook" value="{{ d.card_facebook }}" placeholder="yourpage or full URL">
+            </div>
+        </div>
+
+        <button class="btn-block" type="submit">Save Business Card</button>
+    </form>
+</div>
+{% endblock %}

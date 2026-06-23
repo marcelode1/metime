@@ -58,6 +58,7 @@
         <nav>
             {% if session_role == 'admin' %}
                 <a href="{{ url_for('admin_dashboard') }}">Clients</a>
+                <a href="{{ url_for('admin_card') }}">Card</a>
                 <a href="{{ url_for('logout') }}">Log out</a>
             {% elif session_role == 'client' %}
                 <a href="{{ url_for('home') }}">Home</a>
@@ -72,8 +73,81 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </main>
+    <div id="installBanner" class="installBanner" role="dialog" aria-label="Install MeTime">
+        <img src="{{ url_for('static', filename='icon-192.png') }}" alt="" class="installIcon">
+        <div class="installBody">
+            <strong>Install MeTime</strong>
+            <span id="installText">Add it to your home screen for the full app experience.</span>
+            <span id="iosHint" style="display:none">Tap the Share button <span style="font-size:17px">&#x2191;&#xFE0E;</span> at the bottom of Safari, then choose <b>“Add to Home Screen”.</b></span>
+        </div>
+        <button type="button" id="installBtn" class="installBtn">Install</button>
+        <button type="button" id="installDismiss" class="installDismiss" aria-label="Dismiss">&times;</button>
+    </div>
+    <style>
+        .installBanner{display:none;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));
+            z-index:1000;background:#fff;border:1px solid var(--border);border-radius:16px;padding:12px 14px;
+            box-shadow:0 12px 40px rgba(76,29,149,.22);align-items:center;gap:12px;max-width:520px;margin:0 auto}
+        .installIcon{width:46px;height:46px;border-radius:11px;flex:0 0 auto}
+        .installBody{flex:1;min-width:0;font-size:13px;color:var(--muted);line-height:1.35}
+        .installBody strong{display:block;color:var(--text);font-size:15px;margin-bottom:2px}
+        .installBtn{flex:0 0 auto;background:var(--brand);color:#fff;border:0;border-radius:11px;
+            padding:11px 16px;font-weight:800;font-size:14px;cursor:pointer;margin:0}
+        .installDismiss{flex:0 0 auto;background:transparent;border:0;color:var(--muted);font-size:24px;
+            line-height:1;cursor:pointer;padding:2px 6px;margin:0;min-height:0;width:auto}
+    </style>
     <script>
         if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js",{scope:"/"}).catch(()=>{})}
+
+        (function(){
+            var banner=document.getElementById("installBanner");
+            var installBtn=document.getElementById("installBtn");
+            var iosHint=document.getElementById("iosHint");
+            var installText=document.getElementById("installText");
+            var dismiss=document.getElementById("installDismiss");
+            if(!banner) return;
+
+            var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+            if(standalone) return;                                  // already installed
+            if(localStorage.getItem("mt_install_dismissed")==="1") return;
+
+            var ua = navigator.userAgent || "";
+            var isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+            var deferredPrompt=null;
+
+            function show(){ banner.style.display="flex"; }
+            function hide(){ banner.style.display="none"; }
+
+            // Android / Chrome / Edge: capture the native install prompt
+            window.addEventListener("beforeinstallprompt", function(e){
+                e.preventDefault();
+                deferredPrompt=e;
+                iosHint.style.display="none";
+                installText.style.display="block";
+                installBtn.style.display="inline-flex";
+                show();
+            });
+            installBtn.addEventListener("click", async function(){
+                if(!deferredPrompt) return;
+                deferredPrompt.prompt();
+                try{ await deferredPrompt.userChoice; }catch(e){}
+                deferredPrompt=null;
+                hide();
+            });
+
+            // iOS Safari: no programmatic install — show the Add to Home Screen instructions
+            if(isIOS){
+                installBtn.style.display="none";
+                installText.style.display="none";
+                iosHint.style.display="block";
+                setTimeout(show, 1500);
+            }
+
+            dismiss.addEventListener("click", function(){
+                hide();
+                try{ localStorage.setItem("mt_install_dismissed","1"); }catch(e){}
+            });
+            window.addEventListener("appinstalled", hide);
+        })();
     </script>
 </body>
 </html>

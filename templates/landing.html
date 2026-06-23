@@ -9,10 +9,10 @@
         <p class="muted" style="margin-top:2px">Therapeutic Massage</p>
     {% endif %}
     <p class="muted">Your personal space to book massage sessions, complete your health intake, and stay connected with your therapist.</p>
-    <div style="display:grid;gap:10px;max-width:320px;margin:18px auto 0">
-        <a class="btn btn-block" href="{{ url_for('signup') }}">Become a Client</a>
-        <a class="btn btn-ghost btn-block" href="{{ url_for('login') }}">Log In</a>
+    <div style="display:grid;gap:10px;max-width:340px;margin:18px auto 0">
+        <a class="btn btn-block" href="{{ url_for('intake') }}">Become a Client</a>
     </div>
+    <p class="muted" style="margin-top:10px">Just fill out a quick intake form &mdash; no account needed.</p>
 </div>
 <p class="muted" style="text-align:center"><a href="{{ url_for('admin_login') }}">Office staff login</a></p>
 {% endblock %}

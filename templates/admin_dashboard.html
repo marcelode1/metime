@@ -8,7 +8,31 @@
         <input name="q" value="{{ q }}" placeholder="Search by name, email, or phone" style="margin:0">
         <button type="submit" style="margin:0">Search</button>
     </form>
+    <a class="btn btn-ghost" href="{{ url_for('admin_card') }}" style="margin-top:12px">My Business Card</a>
 </div>
+
+<div class="card">
+    <h3>Invite a New Client by Text</h3>
+    <p class="muted">Enter the client's phone number. Your phone's Messages app opens with an invite link to the intake form &mdash; just hit send.</p>
+    <input type="tel" id="invitePhone" inputmode="tel" placeholder="Client phone number" style="margin:0 0 10px">
+    <button type="button" id="inviteBtn">Send Invite by Text</button>
+    <p class="muted" id="inviteStatus" style="min-height:16px;margin-top:8px"></p>
+</div>
+
+<script>
+    document.getElementById("inviteBtn").addEventListener("click", function(){
+        var el = document.getElementById("invitePhone");
+        var status = document.getElementById("inviteStatus");
+        var num = (el.value || "").replace(/[^0-9+]/g, "");
+        if(!num){ status.style.color="#dc2626"; status.textContent="Enter a phone number."; return; }
+        var link = {{ intake_url|tojson }};
+        var biz = {{ business_name|tojson }};
+        var body = "Hi! " + biz + " invites you to become a client. Please fill out your quick intake form here: " + link;
+        var sep = /iP(hone|od|ad)/.test(navigator.userAgent) ? "&" : "?";
+        status.style.color=""; status.textContent="Opening your Messages app...";
+        window.location.href = "sms:" + num + sep + "body=" + encodeURIComponent(body);
+    });
+</script>
 
 <div class="card">
     {% if clients %}

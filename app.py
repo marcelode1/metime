@@ -1,10 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from datetime import datetime, timezone
 from functools import wraps
-import os
+import os, base64, mimetypes, re
 import psycopg
 from psycopg.rows import dict_row
+
+try:
+    import segno
+except Exception:
+    segno = None
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "CHANGE_THIS_SECRET_KEY")
@@ -19,6 +25,12 @@ def db():
 
 
 SCHEMA = [
+    """
+    CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )
+    """,
     """
     CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -136,6 +148,106 @@ def now_iso():
     return datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
 
+CARD_TEXT_KEYS = [
+    "card_business_name", "card_contact_name", "card_title", "card_tagline",
+    "card_phone", "card_email", "card_website", "card_address",
+    "card_instagram", "card_facebook",
+]
+
+
+def get_setting(key, default=""):
+    try:
+        conn = db()
+        row = conn.execute("SELECT value FROM app_settings WHERE key = %s", (key,)).fetchone()
+        conn.close()
+        return (row["value"] if row and row["value"] is not None else default)
+    except Exception:
+        return default
+
+
+def set_setting(key, value):
+    conn = db()
+    conn.execute(
+        "INSERT INTO app_settings (key, value) VALUES (%s, %s) "
+        "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+        (key, value)
+    )
+    conn.commit()
+    conn.close()
+
+
+def card_data():
+    d = {k: get_setting(k, "") for k in CARD_TEXT_KEYS}
+    d["banner"] = get_setting("card_banner_data", "")   # data URI or ""
+    d["photo"] = get_setting("card_photo_data", "")     # data URI or ""
+    if not d.get("card_business_name"):
+        d["card_business_name"] = APP_NAME
+    return d
+
+
+def normalized_website_url(value):
+    value = (value or "").strip()
+    if not value:
+        return ""
+    return value if re.match(r"^https?://", value, re.I) else "https://" + value
+
+
+def social_url(kind, value):
+    value = (value or "").strip()
+    if not value:
+        return ""
+    if re.match(r"^https?://", value, re.I):
+        return value
+    handle = value.lstrip("@").strip("/")
+    if kind == "instagram":
+        return "https://instagram.com/" + handle
+    if kind == "facebook":
+        return "https://facebook.com/" + handle
+    return "https://" + value
+
+
+def card_qr_svg(url):
+    if not segno or not url:
+        return ""
+    try:
+        return segno.make(url, error="m").svg_inline(scale=7, border=0, dark="#6d28d9")
+    except Exception:
+        return ""
+
+
+def _vcard_escape(v):
+    return str(v or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
+
+
+def card_vcard_text(d):
+    name = d.get("card_contact_name") or d.get("card_business_name") or "Contact"
+    lines = ["BEGIN:VCARD", "VERSION:3.0", f"N:{_vcard_escape(name)};;;;", f"FN:{_vcard_escape(name)}"]
+    if d.get("card_business_name"):
+        lines.append(f"ORG:{_vcard_escape(d['card_business_name'])}")
+    if d.get("card_title"):
+        lines.append(f"TITLE:{_vcard_escape(d['card_title'])}")
+    if d.get("card_phone"):
+        lines.append(f"TEL;TYPE=CELL:{_vcard_escape(d['card_phone'])}")
+    if d.get("card_email"):
+        lines.append(f"EMAIL;TYPE=WORK:{_vcard_escape(d['card_email'])}")
+    if d.get("card_website"):
+        lines.append(f"URL:{_vcard_escape(d['card_website'])}")
+    if d.get("card_address"):
+        lines.append(f"ADR;TYPE=WORK:;;{_vcard_escape(d['card_address'])};;;;")
+    lines.append("END:VCARD")
+    return "\r\n".join(lines)
+
+
+def image_to_data_uri(file_storage):
+    raw = file_storage.read()
+    if not raw:
+        return None, "empty"
+    if len(raw) > 1_500_000:
+        return None, "too_big"
+    mime = file_storage.mimetype or mimetypes.guess_type(file_storage.filename or "")[0] or "image/png"
+    return f"data:{mime};base64," + base64.b64encode(raw).decode("ascii"), None
+
+
 def admin_exists():
     try:
         conn = db()
@@ -197,32 +309,8 @@ def index():
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        email = request.form.get("email", "").strip().lower()
-        phone = request.form.get("phone", "").strip()
-        password = request.form.get("password", "")
-        if not name or not email or not password:
-            flash("Please fill in your name, email, and a password.")
-            return render_template("signup.html", name=name, email=email, phone=phone)
-        conn = db()
-        existing = conn.execute("SELECT id FROM users WHERE email = %s", (email,)).fetchone()
-        if existing:
-            conn.close()
-            flash("An account with that email already exists. Please log in.")
-            return redirect(url_for("login"))
-        new_user = conn.execute(
-            "INSERT INTO users (role, name, email, phone, password_hash, created_at) VALUES ('client', %s, %s, %s, %s, %s) RETURNING id",
-            (name, email, phone, generate_password_hash(password), now_iso())
-        ).fetchone()
-        conn.commit()
-        conn.close()
-        session["user_id"] = new_user["id"]
-        session["role"] = "client"
-        session["name"] = name
-        flash("Welcome! Please complete your health intake form.")
-        return redirect(url_for("intake"))
-    return render_template("signup.html")
+    # Clients no longer create accounts — "Become a Client" goes straight to the public intake form.
+    return redirect(url_for("intake"))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -261,7 +349,6 @@ def home():
 
 
 @app.route("/intake", methods=["GET", "POST"])
-@login_required
 def intake():
     conn = db()
     if request.method == "POST":
@@ -307,6 +394,10 @@ def intake():
             "client_signature": text("client_signature"),
             "signed_date": text("signed_date") or now_iso()[:10],
         }
+        if not fields["full_name"]:
+            conn.close()
+            flash("Please enter your full name.")
+            return redirect(url_for("intake"))
         if not fields["consent_treatment"] or not fields["consent_cancellation"] or not fields["consent_privacy"]:
             conn.close()
             flash("Please check the required consent boxes to submit your intake form.")
@@ -316,8 +407,30 @@ def intake():
             flash("Please type your name as your signature.")
             return redirect(url_for("intake"))
 
+        # Resolve which client this belongs to. No client login/account is required:
+        # find an existing client by email (so re-submitting updates), otherwise create a new client record.
+        email = fields["email"].strip().lower()
+        existing = None
+        if email:
+            existing = conn.execute("SELECT id, role FROM users WHERE email = %s", (email,)).fetchone()
+        if existing and existing.get("role") == "client":
+            user_id = existing["id"]
+            conn.execute(
+                "UPDATE users SET name = %s, phone = COALESCE(NULLIF(%s,''), phone) WHERE id = %s",
+                (fields["full_name"], fields["phone"], user_id)
+            )
+        else:
+            # If the email is taken by a non-client (e.g. the office), store the client without a login email.
+            insert_email = None if (existing and existing.get("role") != "client") else (email or None)
+            row = conn.execute(
+                "INSERT INTO users (role, name, email, phone, password_hash, created_at) "
+                "VALUES ('client', %s, %s, %s, %s, %s) RETURNING id",
+                (fields["full_name"], insert_email, fields["phone"], "", now_iso())
+            ).fetchone()
+            user_id = row["id"]
+
         cols = list(fields.keys())
-        params = {**fields, "user_id": session["user_id"], "now": now_iso()}
+        params = {**fields, "user_id": user_id, "now": now_iso()}
         collist = "user_id, " + ", ".join(cols) + ", created_at, updated_at"
         placeholders = "%(user_id)s, " + ", ".join(f"%({c})s" for c in cols) + ", %(now)s, %(now)s"
         updates = ", ".join(f"{c} = EXCLUDED.{c}" for c in cols) + ", updated_at = EXCLUDED.updated_at"
@@ -326,26 +439,15 @@ def intake():
             f"ON CONFLICT (user_id) DO UPDATE SET {updates}",
             params
         )
-        # keep the account name/phone in sync if provided
-        if fields["full_name"] or fields["phone"]:
-            conn.execute(
-                "UPDATE users SET name = COALESCE(NULLIF(%s,''), name), phone = COALESCE(NULLIF(%s,''), phone) WHERE id = %s",
-                (fields["full_name"], fields["phone"], session["user_id"])
-            )
-            if fields["full_name"]:
-                session["name"] = fields["full_name"]
         conn.commit()
         conn.close()
-        flash("Thank you! Your intake form has been saved.")
-        return redirect(url_for("home"))
+        return render_template("intake_thanks.html", name=fields["full_name"])
 
-    intake = conn.execute("SELECT * FROM client_intake WHERE user_id = %s", (session["user_id"],)).fetchone()
-    user = conn.execute("SELECT name, email, phone FROM users WHERE id = %s", (session["user_id"],)).fetchone()
     conn.close()
     return render_template(
         "intake.html",
-        intake=intake or {},
-        user=user or {},
+        intake={},
+        user={},
         condition_options=CONDITION_OPTIONS,
         visit_reason_options=VISIT_REASON_OPTIONS,
         pain_description_options=PAIN_DESCRIPTION_OPTIONS,
@@ -413,7 +515,9 @@ def admin_dashboard():
         clients = conn.execute("SELECT * FROM users WHERE role = 'client' ORDER BY created_at DESC").fetchall()
     total = conn.execute("SELECT COUNT(*) AS n FROM users WHERE role = 'client'").fetchone()["n"]
     conn.close()
-    return render_template("admin_dashboard.html", clients=clients, q=q, total=total)
+    return render_template("admin_dashboard.html", clients=clients, q=q, total=total,
+                           intake_url=url_for("intake", _external=True),
+                           business_name=get_setting("card_business_name", APP_NAME))
 
 
 @app.route("/admin/client/<int:client_id>", methods=["GET", "POST"])
@@ -435,6 +539,64 @@ def admin_client(client_id):
     intake = conn.execute("SELECT * FROM client_intake WHERE user_id = %s", (client_id,)).fetchone()
     conn.close()
     return render_template("admin_client.html", client=client, intake=intake)
+
+
+# ---------------------------------------------------------------- business card
+@app.route("/admin/card", methods=["GET", "POST"])
+@admin_required
+def admin_card():
+    if request.method == "POST":
+        for k in CARD_TEXT_KEYS:
+            set_setting(k, request.form.get(k, "").strip())
+        banner = request.files.get("card_banner")
+        if banner and banner.filename:
+            uri, err = image_to_data_uri(banner)
+            if err == "too_big":
+                flash("Banner image is too large — keep it under 1.5 MB.")
+            elif uri:
+                set_setting("card_banner_data", uri)
+        elif request.form.get("remove_banner"):
+            set_setting("card_banner_data", "")
+        photo = request.files.get("card_photo")
+        if photo and photo.filename:
+            uri, err = image_to_data_uri(photo)
+            if err == "too_big":
+                flash("Photo image is too large — keep it under 1.5 MB.")
+            elif uri:
+                set_setting("card_photo_data", uri)
+        elif request.form.get("remove_photo"):
+            set_setting("card_photo_data", "")
+        flash("Business card saved.")
+        return redirect(url_for("admin_card"))
+    return render_template("admin_card.html", d=card_data())
+
+
+@app.route("/card")
+def card():
+    d = card_data()
+    try:
+        card_url = url_for("card", _external=True)
+    except Exception:
+        card_url = ""
+    return render_template(
+        "card.html",
+        d=d,
+        card_url=card_url,
+        website_url=normalized_website_url(d.get("card_website")),
+        instagram_url=social_url("instagram", d.get("card_instagram")),
+        facebook_url=social_url("facebook", d.get("card_facebook")),
+        qr_svg=card_qr_svg(card_url),
+        is_admin=(session.get("role") == "admin"),
+    )
+
+
+@app.route("/card.vcf")
+def card_vcf():
+    d = card_data()
+    text = card_vcard_text(d)
+    fname = secure_filename(d.get("card_business_name") or "contact") or "contact"
+    return Response(text, mimetype="text/vcard",
+                    headers={"Content-Disposition": f"attachment; filename={fname}.vcf"})
 
 
 # ---------------------------------------------------------------- misc / pwa

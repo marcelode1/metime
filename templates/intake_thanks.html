@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Thank You - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card" style="text-align:center">
+    <img src="{{ url_for('static', filename='icon-192.png') }}" alt="" style="width:80px;height:80px;border-radius:20px;margin:6px 0 10px">
+    <h1>Thank you{% if name %}, {{ name }}{% endif %}! 🌸</h1>
+    <p class="muted">Your intake form has been received. The office now has your information and will be in touch about your appointment.</p>
+    <a class="btn" href="{{ url_for('index') }}" style="margin-top:16px">Back to Home</a>
+</div>
+{% endblock %}
