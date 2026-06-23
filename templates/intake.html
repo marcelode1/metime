@@ -1,25 +1,69 @@
 {% extends "base.html" %}
 {% block title %}Health Intake - {{ app_name }}{% endblock %}
 {% block content %}
+<style>
+    .section-title{color:var(--brand-dark);border-bottom:2px solid var(--accent);padding-bottom:6px;margin:26px 0 10px}
+    .checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
+    @media(max-width:560px){.checkgrid{grid-template-columns:1fr}}
+    .checkgrid label,.yn label{display:flex;gap:9px;align-items:center;font-weight:600;margin:5px 0}
+    .checkgrid input,.yn input{width:auto;margin:0}
+    .yn{display:flex;gap:22px;margin:6px 0}
+    .ack{background:#faf7ff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:10px 0;font-size:14px;color:#473a5e}
+</style>
+
+{% set cond_list = (intake.conditions or '').split(', ') %}
+{% set reason_list = (intake.visit_reason or '').split(', ') %}
+{% set pain_list = (intake.pain_description or '').split(', ') %}
+
 <div class="card">
-    <h1>Health Intake Form</h1>
-    <p class="muted">This helps your therapist give you safe, personalized care. Your information is private and only seen by the office.</p>
+    <h1>Massage Therapy Client Intake Form</h1>
+    <p class="muted">Your information is private and seen only by the office. Please complete it fully so your therapist can give you safe, personalized care.</p>
+
     <form method="post">
+        <h3 class="section-title">Personal Information</h3>
+        <label>Full Name</label>
+        <input name="full_name" value="{{ intake.full_name or user.name or '' }}" required>
         <div class="row2">
             <div>
                 <label>Date of Birth</label>
                 <input name="date_of_birth" type="date" value="{{ intake.date_of_birth or '' }}">
             </div>
             <div>
-                <label>Occupation</label>
-                <input name="occupation" value="{{ intake.occupation or '' }}">
+                <label>Age</label>
+                <input name="age" inputmode="numeric" value="{{ intake.age or '' }}">
+            </div>
+        </div>
+        <div class="row2">
+            <div>
+                <label>Phone Number</label>
+                <input name="phone" type="tel" value="{{ intake.phone or user.phone or '' }}">
+            </div>
+            <div>
+                <label>Email Address</label>
+                <input name="email" type="email" value="{{ intake.email or user.email or '' }}">
             </div>
         </div>
         <label>Address</label>
         <input name="address" value="{{ intake.address or '' }}">
         <div class="row2">
             <div>
-                <label>Emergency Contact Name</label>
+                <label>City</label>
+                <input name="city" value="{{ intake.city or '' }}">
+            </div>
+            <div class="row2">
+                <div>
+                    <label>State</label>
+                    <input name="state" value="{{ intake.state or '' }}">
+                </div>
+                <div>
+                    <label>Zip</label>
+                    <input name="zip" value="{{ intake.zip or '' }}">
+                </div>
+            </div>
+        </div>
+        <div class="row2">
+            <div>
+                <label>Emergency Contact</label>
                 <input name="emergency_name" value="{{ intake.emergency_name or '' }}">
             </div>
             <div>
@@ -27,58 +71,121 @@
                 <input name="emergency_phone" type="tel" value="{{ intake.emergency_phone or '' }}">
             </div>
         </div>
+
+        <h3 class="section-title">Health History</h3>
+        <label>Please check any conditions that apply:</label>
+        <div class="checkgrid">
+            {% for opt in condition_options %}
+                <label><input type="checkbox" name="conditions" value="{{ opt }}" {% if opt in cond_list %}checked{% endif %}> {{ opt }}</label>
+            {% endfor %}
+        </div>
+        <label>Other condition</label>
+        <input name="conditions_other" value="{{ intake.conditions_other or '' }}">
+
+        <label>Are you currently under a physician's care?</label>
+        <div class="yn">
+            <label><input type="radio" name="physician_care" value="Yes" {% if intake.physician_care=='Yes' %}checked{% endif %}> Yes</label>
+            <label><input type="radio" name="physician_care" value="No" {% if intake.physician_care=='No' %}checked{% endif %}> No</label>
+        </div>
+        <label>If yes, please explain</label>
+        <textarea name="physician_explain">{{ intake.physician_explain or '' }}</textarea>
+
+        <label>Are you taking any medications?</label>
+        <div class="yn">
+            <label><input type="radio" name="medications_flag" value="Yes" {% if intake.medications_flag=='Yes' %}checked{% endif %}> Yes</label>
+            <label><input type="radio" name="medications_flag" value="No" {% if intake.medications_flag=='No' %}checked{% endif %}> No</label>
+        </div>
+        <label>If yes, please list</label>
+        <textarea name="medications">{{ intake.medications or '' }}</textarea>
+
+        <label>Do you have any allergies?</label>
+        <div class="yn">
+            <label><input type="radio" name="allergies_flag" value="Yes" {% if intake.allergies_flag=='Yes' %}checked{% endif %}> Yes</label>
+            <label><input type="radio" name="allergies_flag" value="No" {% if intake.allergies_flag=='No' %}checked{% endif %}> No</label>
+        </div>
+        <label>If yes, please list</label>
+        <textarea name="allergies">{{ intake.allergies or '' }}</textarea>
+
+        <h3 class="section-title">Massage Information</h3>
+        <label>What brings you in today?</label>
+        <div class="checkgrid">
+            {% for opt in visit_reason_options %}
+                <label><input type="checkbox" name="visit_reason" value="{{ opt }}" {% if opt in reason_list %}checked{% endif %}> {{ opt }}</label>
+            {% endfor %}
+        </div>
+        <label>Other</label>
+        <input name="visit_reason_other" value="{{ intake.visit_reason_other or '' }}">
+
+        <label>Areas of concern</label>
+        <textarea name="areas_of_concern">{{ intake.areas_of_concern or '' }}</textarea>
+
+        <div class="row2">
+            <div>
+                <label>Pain level (0&ndash;10)</label>
+                <input name="pain_level" type="number" min="0" max="10" value="{{ intake.pain_level or '' }}">
+            </div>
+            <div>
+                <label>How long have you experienced this issue?</label>
+                <input name="issue_duration" value="{{ intake.issue_duration or '' }}">
+            </div>
+        </div>
+
+        <label>How would you describe your pain?</label>
+        <div class="checkgrid">
+            {% for opt in pain_description_options %}
+                <label><input type="checkbox" name="pain_description" value="{{ opt }}" {% if opt in pain_list %}checked{% endif %}> {{ opt }}</label>
+            {% endfor %}
+        </div>
+
+        <label>Preferred Pressure</label>
+        <div class="checkgrid">
+            {% for opt in pressure_options %}
+                <label><input type="radio" name="pressure_preference" value="{{ opt }}" {% if intake.pressure_preference==opt %}checked{% endif %}> {{ opt }}</label>
+            {% endfor %}
+        </div>
+
         <label>How did you hear about us?</label>
         <input name="referral" value="{{ intake.referral or '' }}">
 
-        <h3 style="margin-top:22px">Health History</h3>
-        <label>Current medical conditions</label>
-        <textarea name="conditions" placeholder="e.g. high blood pressure, diabetes, arthritis...">{{ intake.conditions or '' }}</textarea>
-        <label>Current medications</label>
-        <textarea name="medications">{{ intake.medications or '' }}</textarea>
-        <label>Allergies</label>
-        <textarea name="allergies">{{ intake.allergies or '' }}</textarea>
-        <label>Past surgeries or injuries</label>
-        <textarea name="surgeries">{{ intake.surgeries or '' }}</textarea>
+        <h3 class="section-title">Consent and Acknowledgment</h3>
+        <div class="ack">
+            <p>I understand that massage therapy is intended for relaxation and muscle tension relief and is not a substitute for medical treatment or diagnosis.</p>
+            <p>I understand that I am responsible for informing the massage therapist of any changes in my health condition.</p>
+            <p>I understand that professional massage therapy is strictly therapeutic and non-sexual in nature.</p>
+        </div>
+        <div class="checkbox">
+            <input type="checkbox" name="consent_treatment" id="c1" {% if intake.consent_treatment %}checked{% endif %}>
+            <label for="c1" style="margin:0;font-weight:600">I have read and agree to the acknowledgments above. <span style="color:var(--danger)">*</span></label>
+        </div>
+        <div class="checkbox">
+            <input type="checkbox" name="consent_cancellation" id="c2" {% if intake.consent_cancellation %}checked{% endif %}>
+            <label for="c2" style="margin:0;font-weight:600">I acknowledge the cancellation policy. <span style="color:var(--danger)">*</span></label>
+        </div>
+        <div class="checkbox">
+            <input type="checkbox" name="consent_privacy" id="c3" {% if intake.consent_privacy %}checked{% endif %}>
+            <label for="c3" style="margin:0;font-weight:600">I understand my health information is kept private (<a href="{{ url_for('privacy') }}" target="_blank">Privacy Policy</a>). <span style="color:var(--danger)">*</span></label>
+        </div>
+        <div class="checkbox">
+            <input type="checkbox" name="consent_reminders" id="c4" {% if intake.consent_reminders %}checked{% endif %}>
+            <label for="c4" style="margin:0;font-weight:600">I consent to receive text/email appointment reminders.</label>
+        </div>
+        <div class="checkbox">
+            <input type="checkbox" name="consent_photo_release" id="c5" {% if intake.consent_photo_release %}checked{% endif %}>
+            <label for="c5" style="margin:0;font-weight:600">Optional: I allow photos to be used for testimonials and marketing.</label>
+        </div>
+
         <div class="row2">
             <div>
-                <label>Are you pregnant?</label>
-                <select name="pregnant">
-                    {% set pg = intake.pregnant or '' %}
-                    <option value="" {% if pg=='' %}selected{% endif %}>Prefer not to say</option>
-                    <option value="No" {% if pg=='No' %}selected{% endif %}>No</option>
-                    <option value="Yes" {% if pg=='Yes' %}selected{% endif %}>Yes</option>
-                </select>
+                <label>Client Signature (type your full name) <span style="color:var(--danger)">*</span></label>
+                <input name="client_signature" value="{{ intake.client_signature or '' }}" placeholder="Your full name" required>
             </div>
             <div>
-                <label>Preferred pressure</label>
-                <select name="pressure_preference">
-                    {% set pr = intake.pressure_preference or '' %}
-                    <option value="" {% if pr=='' %}selected{% endif %}>No preference</option>
-                    <option value="Light" {% if pr=='Light' %}selected{% endif %}>Light</option>
-                    <option value="Medium" {% if pr=='Medium' %}selected{% endif %}>Medium</option>
-                    <option value="Firm" {% if pr=='Firm' %}selected{% endif %}>Firm</option>
-                    <option value="Deep" {% if pr=='Deep' %}selected{% endif %}>Deep tissue</option>
-                </select>
+                <label>Date</label>
+                <input name="signed_date" type="date" value="{{ intake.signed_date or '' }}">
             </div>
         </div>
-        <label>Areas of concern / pain</label>
-        <textarea name="areas_of_concern" placeholder="e.g. lower back, neck, shoulders...">{{ intake.areas_of_concern or '' }}</textarea>
-        <label>What are your goals for massage?</label>
-        <textarea name="goals" placeholder="e.g. relaxation, pain relief, stress, recovery...">{{ intake.goals or '' }}</textarea>
 
-        <h3 style="margin-top:22px">Consent</h3>
-        <div class="checkbox">
-            <input type="checkbox" name="consent_treatment" id="ct" {% if intake.consent_treatment %}checked{% endif %}>
-            <label for="ct" style="margin:0;font-weight:600">I consent to receive massage therapy and confirm the information above is accurate. I understand I should inform my therapist of any changes to my health.</label>
-        </div>
-        <div class="checkbox">
-            <input type="checkbox" name="consent_privacy" id="cp" {% if intake.consent_privacy %}checked{% endif %}>
-            <label for="cp" style="margin:0;font-weight:600">I understand my health information is kept private and used only to provide safe care. See our <a href="{{ url_for('privacy') }}" target="_blank">Privacy Policy</a>.</label>
-        </div>
-        <label>Type your full name as your signature</label>
-        <input name="signature" value="{{ intake.signature or '' }}" placeholder="Your full name">
-
-        <button class="btn-block" type="submit">Save My Health Form</button>
+        <button class="btn-block" type="submit">Submit My Intake Form</button>
     </form>
 </div>
 {% endblock %}

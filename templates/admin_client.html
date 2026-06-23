@@ -10,32 +10,49 @@
 
 {% if intake %}
 <div class="card">
-    <h3>Health Intake</h3>
+    <h3>Personal Information</h3>
     <div class="row2">
-        <p><strong>Date of birth:</strong><br>{{ intake.date_of_birth or '-' }}</p>
-        <p><strong>Occupation:</strong><br>{{ intake.occupation or '-' }}</p>
+        <p><strong>Date of birth:</strong><br>{{ intake.date_of_birth or '-' }}{% if intake.age %} (age {{ intake.age }}){% endif %}</p>
+        <p><strong>Phone:</strong><br>{{ intake.phone or client.phone or '-' }}</p>
     </div>
-    <p><strong>Address:</strong><br>{{ intake.address or '-' }}</p>
+    <p><strong>Email:</strong><br>{{ intake.email or client.email or '-' }}</p>
+    <p><strong>Address:</strong><br>{{ intake.address or '-' }}{% if intake.city or intake.state or intake.zip %}<br>{{ intake.city }}{% if intake.state %}, {{ intake.state }}{% endif %} {{ intake.zip }}{% endif %}</p>
     <div class="row2">
         <p><strong>Emergency contact:</strong><br>{{ intake.emergency_name or '-' }}</p>
         <p><strong>Emergency phone:</strong><br>{{ intake.emergency_phone or '-' }}</p>
     </div>
     <p><strong>Heard about us:</strong><br>{{ intake.referral or '-' }}</p>
-    <hr style="border:0;border-top:1px solid var(--border);margin:16px 0">
-    <p><strong>Medical conditions:</strong><br>{{ intake.conditions or '-' }}</p>
-    <p><strong>Medications:</strong><br>{{ intake.medications or '-' }}</p>
-    <p><strong>Allergies:</strong><br>{{ intake.allergies or '-' }}</p>
-    <p><strong>Surgeries / injuries:</strong><br>{{ intake.surgeries or '-' }}</p>
+</div>
+
+<div class="card">
+    <h3>Health History</h3>
+    <p><strong>Conditions:</strong><br>{{ intake.conditions or '-' }}{% if intake.conditions_other %}, {{ intake.conditions_other }}{% endif %}</p>
+    <p><strong>Under physician's care:</strong> {{ intake.physician_care or '-' }}{% if intake.physician_explain %}<br><span class="muted">{{ intake.physician_explain }}</span>{% endif %}</p>
+    <p><strong>Medications:</strong> {{ intake.medications_flag or '-' }}{% if intake.medications %}<br><span class="muted">{{ intake.medications }}</span>{% endif %}</p>
+    <p><strong>Allergies:</strong> {{ intake.allergies_flag or '-' }}{% if intake.allergies %}<br><span class="muted">{{ intake.allergies }}</span>{% endif %}</p>
+</div>
+
+<div class="card">
+    <h3>Massage Information</h3>
+    <p><strong>Reason for visit:</strong><br>{{ intake.visit_reason or '-' }}{% if intake.visit_reason_other %}, {{ intake.visit_reason_other }}{% endif %}</p>
+    <p><strong>Areas of concern:</strong><br>{{ intake.areas_of_concern or '-' }}</p>
     <div class="row2">
-        <p><strong>Pregnant:</strong><br>{{ intake.pregnant or '-' }}</p>
+        <p><strong>Pain level:</strong><br>{{ intake.pain_level or '-' }}{% if intake.pain_level %}/10{% endif %}</p>
         <p><strong>Preferred pressure:</strong><br>{{ intake.pressure_preference or '-' }}</p>
     </div>
-    <p><strong>Areas of concern:</strong><br>{{ intake.areas_of_concern or '-' }}</p>
-    <p><strong>Goals:</strong><br>{{ intake.goals or '-' }}</p>
-    <hr style="border:0;border-top:1px solid var(--border);margin:16px 0">
-    <p class="muted">Consent to treatment: {{ 'Yes ✓' if intake.consent_treatment else 'No' }} ·
-       Privacy acknowledged: {{ 'Yes ✓' if intake.consent_privacy else 'No' }}</p>
-    <p class="muted">Signed: {{ intake.signature or '-' }}{% if intake.updated_at %} · Updated {{ intake.updated_at[:10] }}{% endif %}</p>
+    <p><strong>Pain description:</strong><br>{{ intake.pain_description or '-' }}</p>
+    <p><strong>Duration of issue:</strong><br>{{ intake.issue_duration or '-' }}</p>
+</div>
+
+<div class="card">
+    <h3>Consent</h3>
+    <p class="muted">Acknowledgments agreed: {{ 'Yes ✓' if intake.consent_treatment else 'No' }} ·
+       Cancellation policy: {{ 'Yes ✓' if intake.consent_cancellation else 'No' }} ·
+       Privacy: {{ 'Yes ✓' if intake.consent_privacy else 'No' }}</p>
+    <p class="muted">Reminders opt-in: {{ 'Yes ✓' if intake.consent_reminders else 'No' }} ·
+       Photo release: {{ 'Yes ✓' if intake.consent_photo_release else 'No' }}</p>
+    <p><strong>Signed:</strong> {{ intake.client_signature or '-' }}{% if intake.signed_date %} on {{ intake.signed_date }}{% endif %}
+       {% if intake.updated_at %}<br><span class="muted">Last updated {{ intake.updated_at[:10] }}</span>{% endif %}</p>
 </div>
 {% endif %}
 
