@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Become a Client - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Become a Client</h1>
+    <p class="muted">Create your account, then complete a quick health intake form.</p>
+    <form method="post">
+        <label>Full Name</label>
+        <input name="name" value="{{ name or '' }}" required>
+        <div class="row2">
+            <div>
+                <label>Email</label>
+                <input name="email" type="email" value="{{ email or '' }}" required>
+            </div>
+            <div>
+                <label>Phone</label>
+                <input name="phone" type="tel" value="{{ phone or '' }}">
+            </div>
+        </div>
+        <label>Create a Password</label>
+        <input name="password" type="password" autocomplete="new-password" required>
+        <button class="btn-block" type="submit">Create My Account</button>
+    </form>
+    <p class="muted" style="margin-top:14px">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="text-align:center">
+    {% if logo_exists %}
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="{{ app_name }}" style="width:230px;max-width:80%;border-radius:16px;margin:4px 0 8px">
+    {% else %}
+        <img src="{{ url_for('static', filename='icon-192.png') }}" alt="" style="width:96px;height:96px;border-radius:22px;margin:6px 0 10px">
+        <h1 style="margin-bottom:0">Me Time</h1>
+        <p class="muted" style="margin-top:2px">Therapeutic Massage</p>
+    {% endif %}
+    <p class="muted">Your personal space to book massage sessions, complete your health intake, and stay connected with your therapist.</p>
+    <div style="display:grid;gap:10px;max-width:320px;margin:18px auto 0">
+        <a class="btn btn-block" href="{{ url_for('signup') }}">Become a Client</a>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('login') }}">Log In</a>
+    </div>
+</div>
+<p class="muted" style="text-align:center"><a href="{{ url_for('admin_login') }}">Office staff login</a></p>
+{% endblock %}

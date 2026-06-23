@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Office Login - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Office Login</h1>
+    <form method="post">
+        <label>Email</label>
+        <input name="email" type="email" value="{{ email or '' }}" required>
+        <label>Password</label>
+        <input name="password" type="password" autocomplete="current-password" required>
+        <button class="btn-block" type="submit">Log In to Office</button>
+    </form>
+    <p class="muted" style="margin-top:14px"><a href="{{ url_for('index') }}">Back to client area</a></p>
+</div>
+{% endblock %}

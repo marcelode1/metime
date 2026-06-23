@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }} - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <a href="{{ url_for('admin_dashboard') }}">&larr; All clients</a>
+    <h1 style="margin-top:8px">{{ client.name }}</h1>
+    <p class="muted">{{ client.email }}{% if client.phone %} · {{ client.phone }}{% endif %}</p>
+    {% if intake %}<span class="pill">Health form completed ✓</span>{% else %}<span class="pill" style="background:#fee2e2;color:#991b1b">No health form yet</span>{% endif %}
+</div>
+
+{% if intake %}
+<div class="card">
+    <h3>Health Intake</h3>
+    <div class="row2">
+        <p><strong>Date of birth:</strong><br>{{ intake.date_of_birth or '-' }}</p>
+        <p><strong>Occupation:</strong><br>{{ intake.occupation or '-' }}</p>
+    </div>
+    <p><strong>Address:</strong><br>{{ intake.address or '-' }}</p>
+    <div class="row2">
+        <p><strong>Emergency contact:</strong><br>{{ intake.emergency_name or '-' }}</p>
+        <p><strong>Emergency phone:</strong><br>{{ intake.emergency_phone or '-' }}</p>
+    </div>
+    <p><strong>Heard about us:</strong><br>{{ intake.referral or '-' }}</p>
+    <hr style="border:0;border-top:1px solid var(--border);margin:16px 0">
+    <p><strong>Medical conditions:</strong><br>{{ intake.conditions or '-' }}</p>
+    <p><strong>Medications:</strong><br>{{ intake.medications or '-' }}</p>
+    <p><strong>Allergies:</strong><br>{{ intake.allergies or '-' }}</p>
+    <p><strong>Surgeries / injuries:</strong><br>{{ intake.surgeries or '-' }}</p>
+    <div class="row2">
+        <p><strong>Pregnant:</strong><br>{{ intake.pregnant or '-' }}</p>
+        <p><strong>Preferred pressure:</strong><br>{{ intake.pressure_preference or '-' }}</p>
+    </div>
+    <p><strong>Areas of concern:</strong><br>{{ intake.areas_of_concern or '-' }}</p>
+    <p><strong>Goals:</strong><br>{{ intake.goals or '-' }}</p>
+    <hr style="border:0;border-top:1px solid var(--border);margin:16px 0">
+    <p class="muted">Consent to treatment: {{ 'Yes ✓' if intake.consent_treatment else 'No' }} ·
+       Privacy acknowledged: {{ 'Yes ✓' if intake.consent_privacy else 'No' }}</p>
+    <p class="muted">Signed: {{ intake.signature or '-' }}{% if intake.updated_at %} · Updated {{ intake.updated_at[:10] }}{% endif %}</p>
+</div>
+{% endif %}
+
+<div class="card">
+    <h3>Office Notes</h3>
+    <p class="muted">Private notes for the office (the client never sees these).</p>
+    <form method="post">
+        <textarea name="office_notes" rows="5">{{ client.office_notes or '' }}</textarea>
+        <button type="submit">Save Notes</button>
+    </form>
+</div>
+{% endblock %}

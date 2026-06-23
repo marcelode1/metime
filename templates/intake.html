@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Health Intake - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Health Intake Form</h1>
+    <p class="muted">This helps your therapist give you safe, personalized care. Your information is private and only seen by the office.</p>
+    <form method="post">
+        <div class="row2">
+            <div>
+                <label>Date of Birth</label>
+                <input name="date_of_birth" type="date" value="{{ intake.date_of_birth or '' }}">
+            </div>
+            <div>
+                <label>Occupation</label>
+                <input name="occupation" value="{{ intake.occupation or '' }}">
+            </div>
+        </div>
+        <label>Address</label>
+        <input name="address" value="{{ intake.address or '' }}">
+        <div class="row2">
+            <div>
+                <label>Emergency Contact Name</label>
+                <input name="emergency_name" value="{{ intake.emergency_name or '' }}">
+            </div>
+            <div>
+                <label>Emergency Contact Phone</label>
+                <input name="emergency_phone" type="tel" value="{{ intake.emergency_phone or '' }}">
+            </div>
+        </div>
+        <label>How did you hear about us?</label>
+        <input name="referral" value="{{ intake.referral or '' }}">
+
+        <h3 style="margin-top:22px">Health History</h3>
+        <label>Current medical conditions</label>
+        <textarea name="conditions" placeholder="e.g. high blood pressure, diabetes, arthritis...">{{ intake.conditions or '' }}</textarea>
+        <label>Current medications</label>
+        <textarea name="medications">{{ intake.medications or '' }}</textarea>
+        <label>Allergies</label>
+        <textarea name="allergies">{{ intake.allergies or '' }}</textarea>
+        <label>Past surgeries or injuries</label>
+        <textarea name="surgeries">{{ intake.surgeries or '' }}</textarea>
+        <div class="row2">
+            <div>
+                <label>Are you pregnant?</label>
+                <select name="pregnant">
+                    {% set pg = intake.pregnant or '' %}
+                    <option value="" {% if pg=='' %}selected{% endif %}>Prefer not to say</option>
+                    <option value="No" {% if pg=='No' %}selected{% endif %}>No</option>
+                    <option value="Yes" {% if pg=='Yes' %}selected{% endif %}>Yes</option>
+                </select>
+            </div>
+            <div>
+                <label>Preferred pressure</label>
+                <select name="pressure_preference">
+                    {% set pr = intake.pressure_preference or '' %}
+                    <option value="" {% if pr=='' %}selected{% endif %}>No preference</option>
+                    <option value="Light" {% if pr=='Light' %}selected{% endif %}>Light</option>
+                    <option value="Medium" {% if pr=='Medium' %}selected{% endif %}>Medium</option>
+                    <option value="Firm" {% if pr=='Firm' %}selected{% endif %}>Firm</option>
+                    <option value="Deep" {% if pr=='Deep' %}selected{% endif %}>Deep tissue</option>
+                </select>
+            </div>
+        </div>
+        <label>Areas of concern / pain</label>
+        <textarea name="areas_of_concern" placeholder="e.g. lower back, neck, shoulders...">{{ intake.areas_of_concern or '' }}</textarea>
+        <label>What are your goals for massage?</label>
+        <textarea name="goals" placeholder="e.g. relaxation, pain relief, stress, recovery...">{{ intake.goals or '' }}</textarea>
+
+        <h3 style="margin-top:22px">Consent</h3>
+        <div class="checkbox">
+            <input type="checkbox" name="consent_treatment" id="ct" {% if intake.consent_treatment %}checked{% endif %}>
+            <label for="ct" style="margin:0;font-weight:600">I consent to receive massage therapy and confirm the information above is accurate. I understand I should inform my therapist of any changes to my health.</label>
+        </div>
+        <div class="checkbox">
+            <input type="checkbox" name="consent_privacy" id="cp" {% if intake.consent_privacy %}checked{% endif %}>
+            <label for="cp" style="margin:0;font-weight:600">I understand my health information is kept private and used only to provide safe care. See our <a href="{{ url_for('privacy') }}" target="_blank">Privacy Policy</a>.</label>
+        </div>
+        <label>Type your full name as your signature</label>
+        <input name="signature" value="{{ intake.signature or '' }}" placeholder="Your full name">
+
+        <button class="btn-block" type="submit">Save My Health Form</button>
+    </form>
+</div>
+{% endblock %}

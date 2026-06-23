@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Clients - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Clients</h1>
+    <p class="muted">{{ total }} client{{ '' if total == 1 else 's' }} total.</p>
+    <form method="get" style="display:flex;gap:10px">
+        <input name="q" value="{{ q }}" placeholder="Search by name, email, or phone" style="margin:0">
+        <button type="submit" style="margin:0">Search</button>
+    </form>
+</div>
+
+<div class="card">
+    {% if clients %}
+        <table>
+            <thead><tr>
+                <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Name</th>
+                <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Contact</th>
+                <th style="padding:8px;border-bottom:1px solid var(--border)"></th>
+            </tr></thead>
+            <tbody>
+            {% for c in clients %}
+                <tr>
+                    <td style="padding:10px 8px;border-bottom:1px solid var(--border)"><strong>{{ c.name }}</strong></td>
+                    <td style="padding:10px 8px;border-bottom:1px solid var(--border)">
+                        {{ c.email }}{% if c.phone %}<br><span class="muted">{{ c.phone }}</span>{% endif %}
+                    </td>
+                    <td style="padding:10px 8px;border-bottom:1px solid var(--border);text-align:right">
+                        <a class="btn btn-ghost" style="margin:0;padding:8px 14px" href="{{ url_for('admin_client', client_id=c.id) }}">View</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted">No clients yet{% if q %} matching "{{ q }}"{% endif %}.</p>
+    {% endif %}
+</div>
+{% endblock %}

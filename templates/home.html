@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Home - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Hi {{ session_name }} 👋</h1>
+    <p class="muted">Welcome to your {{ app_name }} space.</p>
+    {% if not intake %}
+        <p>You haven't completed your health intake form yet.</p>
+        <a class="btn" href="{{ url_for('intake') }}">Complete Health Form</a>
+    {% else %}
+        <p class="pill">Health form completed ✓</p>
+        <p><a href="{{ url_for('intake') }}">View / update my health form</a></p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Coming soon</h3>
+    <p class="muted">Booking appointments, your calendar, promotions, and messaging with your therapist will appear here.</p>
+    <div style="display:grid;gap:8px;max-width:340px">
+        <span class="pill">📅 Book an appointment</span>
+        <span class="pill">🎁 Promotions &amp; offers</span>
+        <span class="pill">💬 Message the office</span>
+    </div>
+</div>
+{% endblock %}

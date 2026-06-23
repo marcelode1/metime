@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Office Setup - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Set Up the Office Account</h1>
+    <p class="muted">This is the first-time setup for the therapist/office admin. After this, sign in at the office login.</p>
+    <form method="post">
+        <label>Your Name</label>
+        <input name="name" value="{{ name or '' }}" required>
+        <label>Email</label>
+        <input name="email" type="email" value="{{ email or '' }}" required>
+        <label>Password (at least 6 characters)</label>
+        <input name="password" type="password" autocomplete="new-password" required>
+        <button class="btn-block" type="submit">Create Office Admin</button>
+    </form>
+</div>
+{% endblock %}
