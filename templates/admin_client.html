@@ -65,4 +65,13 @@
         <button type="submit">Save Notes</button>
     </form>
 </div>
+
+<div class="card" style="border:1px solid #f3c6c6">
+    <h3 style="color:#b91c1c">Delete Client</h3>
+    <p class="muted">This permanently removes this client and their entire intake/health form. This cannot be undone.</p>
+    <form method="post" action="{{ url_for('admin_client_delete', client_id=client.id) }}"
+          onsubmit="return confirm('Permanently delete {{ client.name }} and their health form? This cannot be undone.');">
+        <button type="submit" style="background:#dc2626">Delete This Client</button>
+    </form>
+</div>
 {% endblock %}

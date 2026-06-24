@@ -152,9 +152,10 @@ def now_iso():
 
 CARD_TEXT_KEYS = [
     "card_business_name", "card_contact_name", "card_title", "card_tagline",
-    "card_phone", "card_email", "card_website", "card_address",
+    "card_license", "card_phone", "card_email", "card_website", "card_address",
     "card_instagram", "card_facebook",
 ]
+DEFAULT_LICENSE = "MA109774"
 
 
 def get_setting(key, default=""):
@@ -184,6 +185,8 @@ def card_data():
     d["photo"] = get_setting("card_photo_data", "")     # data URI or ""
     if not d.get("card_business_name"):
         d["card_business_name"] = APP_NAME
+    if not d.get("card_license"):
+        d["card_license"] = DEFAULT_LICENSE
     return d
 
 
@@ -236,6 +239,8 @@ def card_vcard_text(d):
         lines.append(f"URL:{_vcard_escape(d['card_website'])}")
     if d.get("card_address"):
         lines.append(f"ADR;TYPE=WORK:;;{_vcard_escape(d['card_address'])};;;;")
+    if d.get("card_license"):
+        lines.append(f"NOTE:License # {_vcard_escape(d['card_license'])}")
     lines.append("END:VCARD")
     return "\r\n".join(lines)
 
@@ -542,6 +547,23 @@ def admin_client(client_id):
     intake = conn.execute("SELECT * FROM client_intake WHERE user_id = %s", (client_id,)).fetchone()
     conn.close()
     return render_template("admin_client.html", client=client, intake=intake)
+
+
+@app.route("/admin/client/<int:client_id>/delete", methods=["POST"])
+@admin_required
+def admin_client_delete(client_id):
+    conn = db()
+    client = conn.execute("SELECT id, name FROM users WHERE id = %s AND role = 'client'", (client_id,)).fetchone()
+    if not client:
+        conn.close()
+        flash("Client not found.")
+        return redirect(url_for("admin_dashboard"))
+    # Deleting the user row also removes their intake (client_intake has ON DELETE CASCADE).
+    conn.execute("DELETE FROM users WHERE id = %s AND role = 'client'", (client_id,))
+    conn.commit()
+    conn.close()
+    flash(f'Client "{client["name"]}" was deleted.')
+    return redirect(url_for("admin_dashboard"))
 
 
 # ---------------------------------------------------------------- business card
