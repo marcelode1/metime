@@ -98,6 +98,12 @@
         <label>If yes, please list</label>
         <textarea name="medications">{{ intake.medications or '' }}</textarea>
 
+        <label>Are you pregnant?</label>
+        <div class="yn">
+            <label><input type="radio" name="pregnant" value="Yes" {% if intake.pregnant=='Yes' %}checked{% endif %}> Yes</label>
+            <label><input type="radio" name="pregnant" value="No" {% if intake.pregnant=='No' %}checked{% endif %}> No</label>
+        </div>
+
         <label>Do you have any allergies?</label>
         <div class="yn">
             <label><input type="radio" name="allergies_flag" value="Yes" {% if intake.allergies_flag=='Yes' %}checked{% endif %}> Yes</label>

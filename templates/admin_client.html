@@ -29,6 +29,7 @@
     <p><strong>Conditions:</strong><br>{{ intake.conditions or '-' }}{% if intake.conditions_other %}, {{ intake.conditions_other }}{% endif %}</p>
     <p><strong>Under physician's care:</strong> {{ intake.physician_care or '-' }}{% if intake.physician_explain %}<br><span class="muted">{{ intake.physician_explain }}</span>{% endif %}</p>
     <p><strong>Medications:</strong> {{ intake.medications_flag or '-' }}{% if intake.medications %}<br><span class="muted">{{ intake.medications }}</span>{% endif %}</p>
+    <p><strong>Pregnant:</strong> {{ intake.pregnant or '-' }}</p>
     <p><strong>Allergies:</strong> {{ intake.allergies_flag or '-' }}{% if intake.allergies %}<br><span class="muted">{{ intake.allergies }}</span>{% endif %}</p>
 </div>
 

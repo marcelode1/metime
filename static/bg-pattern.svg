@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="340" viewBox="0 0 340 340">
+  <g fill="none" stroke="#b88a2e" stroke-width="1.4" stroke-linecap="round" opacity="0.10">
+    <!-- lotus top-left -->
+    <g transform="translate(70 92)">
+      <path d="M0 0 C-7 -16 -7 -28 0 -38 C7 -28 7 -16 0 0 Z"/>
+      <path d="M0 0 C-14 -12 -19 -24 -15 -33 C-4 -27 0 -15 0 0 Z"/>
+      <path d="M0 0 C14 -12 19 -24 15 -33 C4 -27 0 -15 0 0 Z"/>
+      <path d="M0 0 C-24 -6 -31 -16 -29 -25 C-15 -20 -4 -10 0 0 Z"/>
+      <path d="M0 0 C24 -6 31 -16 29 -25 C15 -20 4 -10 0 0 Z"/>
+      <path d="M-26 4 C-10 8 10 8 26 4" />
+    </g>
+    <!-- leaf sprig bottom-right -->
+    <g transform="translate(248 232)">
+      <path d="M0 0 C20 -4 40 -8 56 0"/>
+      <path d="M14 -3 C12 -11 16 -16 22 -16 C22 -10 20 -5 14 -3 Z"/>
+      <path d="M32 -5 C30 -13 34 -18 40 -18 C40 -12 38 -7 32 -5 Z"/>
+      <circle cx="0" cy="0" r="2.2" fill="#b88a2e" stroke="none"/>
+    </g>
+    <!-- small dots -->
+    <circle cx="280" cy="70" r="2.4" fill="#b88a2e" stroke="none"/>
+    <circle cx="150" cy="200" r="2.0" fill="#b88a2e" stroke="none"/>
+    <circle cx="40" cy="270" r="2.2" fill="#b88a2e" stroke="none"/>
+  </g>
+</svg>

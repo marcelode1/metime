@@ -16,8 +16,16 @@
         :root{--bg:#f6f2fb;--card:#fff;--text:#2a2140;--muted:#7c708f;--brand:#7c3aed;--brand-dark:#6d28d9;
               --accent:#c9a24a;--magenta:#b01e68;--danger:#dc2626;--border:#e7defa;--radius:18px}
         *{box-sizing:border-box}
-        body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text);
-             padding-bottom:env(safe-area-inset-bottom);line-height:1.5}
+        body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:var(--text);
+             padding-bottom:env(safe-area-inset-bottom);line-height:1.5;
+             background-color:#f3eefb;
+             background-image:
+                url("{{ url_for('static', filename='bg-pattern.svg') }}"),
+                radial-gradient(900px 520px at 50% -60px, rgba(255,255,255,.75), rgba(255,255,255,0) 65%),
+                linear-gradient(170deg, #f8f4fd 0%, #ece3f8 55%, #f4eefb 100%);
+             background-repeat:repeat, no-repeat, no-repeat;
+             background-attachment:fixed, fixed, fixed;
+             background-size:340px 340px, cover, cover}
         header{background:linear-gradient(135deg,#b9a3dd,#7c3aed);color:#fff;padding:16px 18px;border-bottom:3px solid var(--accent);
                display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
         header .brand{font-weight:900;font-size:20px;letter-spacing:.3px;text-decoration:none;color:#fff;display:flex;align-items:center;gap:10px}
