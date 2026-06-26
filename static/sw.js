@@ -1,4 +1,4 @@
-const CACHE_NAME = "metime-v3-cache";
+const CACHE_NAME = "metime-v4-cache";
 const OFFLINE_URL = "/static/offline.html";
 const CORE_ASSETS = [
     "/static/offline.html",
