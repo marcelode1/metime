@@ -35,6 +35,29 @@
 </script>
 
 <div class="card">
+    <h3>Invite a New Client by Email</h3>
+    <p class="muted">Enter the client's email. Your email app opens with the invite ready to send &mdash; just hit send.</p>
+    <input type="email" id="inviteEmail" inputmode="email" placeholder="Client email address" style="margin:0 0 10px">
+    <button type="button" id="inviteEmailBtn">Send Invite by Email</button>
+    <p class="muted" id="inviteEmailStatus" style="min-height:16px;margin-top:8px"></p>
+</div>
+
+<script>
+    document.getElementById("inviteEmailBtn").addEventListener("click", function(){
+        var el = document.getElementById("inviteEmail");
+        var status = document.getElementById("inviteEmailStatus");
+        var email = (el.value || "").trim();
+        if(email.indexOf("@") < 1 || email.indexOf(".") < 0){ status.style.color="#dc2626"; status.textContent="Enter a valid email address."; return; }
+        var link = {{ intake_url|tojson }};
+        var biz = {{ business_name|tojson }};
+        var subject = biz + " — Become a Client";
+        var body = "Hi!\n\n" + biz + " invites you to become a client. Please fill out your quick intake form here:\n" + link + "\n\nThank you!";
+        status.style.color=""; status.textContent="Opening your email app...";
+        window.location.href = "mailto:" + encodeURIComponent(email) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    });
+</script>
+
+<div class="card">
     {% if clients %}
         <table>
             <thead><tr>
