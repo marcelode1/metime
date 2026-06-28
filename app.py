@@ -228,7 +228,15 @@ def _vcard_escape(v):
 
 def card_vcard_text(d):
     name = d.get("card_contact_name") or d.get("card_business_name") or "Contact"
-    lines = ["BEGIN:VCARD", "VERSION:3.0", f"N:{_vcard_escape(name)};;;;", f"FN:{_vcard_escape(name)}"]
+    name_parts = name.split()
+    if len(name_parts) > 1:
+        given = " ".join(name_parts[:-1])
+        family = name_parts[-1]
+    else:
+        given, family = name, ""
+    lines = ["BEGIN:VCARD", "VERSION:3.0",
+             f"N:{_vcard_escape(family)};{_vcard_escape(given)};;;",
+             f"FN:{_vcard_escape(name)}"]
     if d.get("card_business_name"):
         lines.append(f"ORG:{_vcard_escape(d['card_business_name'])}")
     if d.get("card_title"):
@@ -621,6 +629,13 @@ def card():
         card_url = url_for("card", _external=True)
     except Exception:
         card_url = ""
+    is_admin = session.get("role") == "admin"
+    if is_admin:
+        back_url = url_for("admin_dashboard")
+    elif session.get("user_id"):
+        back_url = url_for("home")
+    else:
+        back_url = url_for("index")
     return render_template(
         "card.html",
         d=d,
@@ -629,7 +644,8 @@ def card():
         instagram_url=social_url("instagram", d.get("card_instagram")),
         facebook_url=social_url("facebook", d.get("card_facebook")),
         qr_svg=card_qr_svg(card_url),
-        is_admin=(session.get("role") == "admin"),
+        is_admin=is_admin,
+        back_url=back_url,
     )
 
 
@@ -638,8 +654,10 @@ def card_vcf():
     d = card_data()
     text = card_vcard_text(d)
     fname = secure_filename(d.get("card_business_name") or "contact") or "contact"
+    # Serve inline (not as an attachment) so phones open the "Add Contact" screen
+    # with the fields pre-filled instead of just downloading a file.
     return Response(text, mimetype="text/vcard",
-                    headers={"Content-Disposition": f"attachment; filename={fname}.vcf"})
+                    headers={"Content-Disposition": f"inline; filename={fname}.vcf"})
 
 
 # ---------------------------------------------------------------- misc / pwa

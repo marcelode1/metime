@@ -36,6 +36,8 @@
         header .brand img{width:30px;height:30px;border-radius:8px}
         header nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
         header nav a{color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:8px 11px;border-radius:10px}
+        .navMobileOnly{display:none}
+        @media(max-width:640px){.navDesktopOnly{display:none}.navMobileOnly{display:inline}}
         header nav a:hover{background:rgba(255,255,255,.16)}
         main{max-width:760px;margin:0 auto;padding:18px 16px 40px}
         .card{background:var(--card);border-radius:var(--radius);padding:20px;margin:0 0 16px;
@@ -71,7 +73,8 @@
             {% if session_role == 'admin' %}
                 <a href="{{ url_for('admin_dashboard') }}">Clients</a>
                 <a href="{{ url_for('admin_promotions') }}">Promotions</a>
-                <a href="{{ url_for('admin_card') }}">Card</a>
+                <a class="navDesktopOnly" href="{{ url_for('admin_card') }}">Edit Card</a>
+                <a class="navMobileOnly" href="{{ url_for('card') }}">Card</a>
                 <a href="{{ url_for('logout') }}">Log out</a>
             {% elif session_role == 'client' %}
                 <a href="{{ url_for('home') }}">Home</a>
