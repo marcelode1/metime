@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Inventory</h2>
+    <a class="btn-link btn-secondary" href="{{ url_for('mobile_home') }}">Back to Mobile Home</a>
+    <form method="get" action="{{ url_for('mobile_inventory') }}">
+        <label>Search Inventory</label>
+        <input name="q" value="{{ q or '' }}" placeholder="Item, model, brand, project, room, supplier">
+        <label>Project</label>
+        <select name="project_id">
+            <option value="">All Projects</option>
+            {% for p in projects %}
+                <option value="{{ p.id }}" {% if selected_project_id == p.id %}selected{% endif %}>{{ p.name }}{% if p.customer_name %} - {{ p.customer_name }}{% endif %}</option>
+            {% endfor %}
+        </select>
+        <label>Choose a Room</label>
+        <select name="room_id">
+            <option value="">All Rooms</option>
+            {% for r in rooms %}
+                <option value="{{ r.id }}" {% if selected_room_id == r.id %}selected{% endif %}>{{ r.project_name }} - {{ r.name }}</option>
+            {% endfor %}
+        </select>
+        <label>Status</label>
+        <select name="status">
+            <option value="">All Statuses</option>
+            {% for value, label in status_options.items() %}
+                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Show Inventory</button>
+    </form>
+</div>
+
+{% if can_edit_inventory() %}
+<div class="card">
+    <h3>Add Inventory Item</h3>
+    <form method="post" action="{{ url_for('mobile_inventory') }}" enctype="multipart/form-data">
+        <label>Date</label>
+        <input type="date" name="item_date" value="{{ today }}" required>
+        <label>Quantity</label>
+        <input type="number" name="quantity" step="0.01" min="0" required>
+        <div class="invAcField">
+            <label>Item</label>
+            <input name="item_name" id="invItemName" autocomplete="off" placeholder="Start typing to search the catalog" required>
+            <div class="invAcMenu" id="invItemMenu" hidden></div>
+        </div>
+        <div class="invAcField">
+            <label>Model #</label>
+            <input name="item_model" id="invItemModel" autocomplete="off" placeholder="Model or part number">
+            <div class="invAcMenu" id="invModelMenu" hidden></div>
+        </div>
+        <label>Brand</label>
+        <input name="brand" id="invBrand" autocomplete="off" placeholder="Sony, Lutron, Sonos">
+        <label>New or Used</label>
+        <select name="item_condition">
+            {% for value, label in condition_options.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+        <label>Where Located</label>
+        <select name="location_type">
+            {% for value, label in location_options.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+        <label>Location Detail</label>
+        <input name="location_detail" placeholder="Shelf, bin, truck, room note">
+        <label>Job Allocation</label>
+        <select name="project_id">
+            <option value="">No project yet</option>
+            {% for p in projects %}
+                <option value="{{ p.id }}">{{ p.name }}{% if p.customer_name %} - {{ p.customer_name }}{% endif %}</option>
+            {% endfor %}
+        </select>
+        <label>Room Allocation</label>
+        <select name="room_id">
+            <option value="">Project general</option>
+            {% for r in rooms %}
+                <option value="{{ r.id }}" data-project-id="{{ r.project_id }}">{{ r.project_name }} - {{ r.name }}</option>
+            {% endfor %}
+        </select>
+        <label>Status</label>
+        <select name="status">
+            {% for value, label in status_options.items() %}
+                <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+        <label>Picture</label>
+        <input type="file" name="picture" accept="image/*,.heic,.heif" capture="environment">
+        <label>Used / Purchase Note</label>
+        <textarea name="used_note" rows="2" placeholder="Where it was used, or why office needs to purchase it"></textarea>
+        <button type="submit">Add Inventory Item</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="card">
+    <h3>Items</h3>
+    {% for item in items %}
+        <div class="card inventoryCard inventory-{{ item.status }}">
+            <strong>{{ item.item_name }}</strong>
+            <p><strong>Qty:</strong> {{ item.quantity }}<br><strong>Model #:</strong> {{ item.item_model or '-' }}<br><strong>Brand:</strong> {{ item.brand or '-' }}</p>
+            <p><strong>Project:</strong> {{ item.project_name or '-' }}<br><strong>Room:</strong> {{ item.room_name or 'Project general' }}</p>
+            {% if item.supplier_name %}
+                <p><strong>Supplier:</strong> {{ item.supplier_name }}{% if item.supplier_address %}<br><a target="_blank" href="{{ maps_directions_url(item.supplier_address) }}">Open Supplier Route</a>{% endif %}</p>
+            {% endif %}
+            <span class="statusBadge">{{ inventory_status_label(item.status) }}</span>
+            {% if item.used_note %}<p>{{ item.used_note }}</p>{% endif %}
+            {% if item.picture_file %}<img class="inventoryPic" src="{{ url_for('storage_file', storage_path=item.picture_file) }}">{% endif %}
+        </div>
+    {% else %}
+        <p>No inventory found.</p>
+    {% endfor %}
+</div>
+<style>
+.inventoryCard{border-left:8px solid #16a34a}.inventoryCard.inventory-needs_purchase{border-left-color:#f59e0b;background:#fffbeb}.inventoryCard.inventory-used{border-left-color:#dc2626;background:#fef2f2}.inventoryCard.inventory-available{background:#f0fdf4}.inventoryCard.inventory-picked_up{border-left-color:#2563eb;background:#dbeafe}.inventoryCard.inventory-purchased_waiting_arrival{border-left-color:#0284c7;background:#e0f2fe}.inventoryCard.inventory-unavailable{border-left-color:#64748b;background:#f1f5f9}.inventoryCard.inventory-backordered{border-left-color:#d97706;background:#fef3c7}
+.statusBadge{display:inline-block;padding:6px 10px;border-radius:999px;background:#16a34a;color:white;font-weight:800}.inventory-used .statusBadge{background:#dc2626}.inventory-needs_purchase .statusBadge{background:#f59e0b}.inventory-picked_up .statusBadge{background:#2563eb}.inventory-purchased_waiting_arrival .statusBadge{background:#0284c7}.inventory-unavailable .statusBadge{background:#64748b}.inventory-backordered .statusBadge{background:#d97706}
+.inventoryPic{max-width:100%;border-radius:10px;border:1px solid var(--border);margin-top:8px}
+</style>
+{% include "_part_catalog_autocomplete.html" %}
+{% include "_inventory_add_catalog.html" %}
+{% endblock %}

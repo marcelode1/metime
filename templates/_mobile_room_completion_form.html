@@ -1,0 +1,32 @@
+{% if not t.supplier_id %}
+    <form method="post" enctype="multipart/form-data" action="{{ url_for('complete_task', task_id=t.id) }}" class="mobileRoomCompletionForm">
+        <input type="hidden" name="next" value="{{ request.full_path }}#task-{{ t.id }}">
+        <input type="hidden" name="completion_room_id" value="{{ r.id }}">
+        <label>Work Description</label>
+        <textarea name="completion_comment" rows="3" placeholder="Describe what is being done"></textarea>
+        <label>Task Status</label>
+        <select name="completion_task_status">
+            {% for value, label in task_status_options.items() %}
+                {% if value not in ["sent_to_worker", "received"] %}
+                    <option value="{{ value }}" {% if normalize_task_status(t.status) == value %}selected{% endif %}>{{ label }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    <div class="completionBlocks">
+        <div class="completionBlock">
+            <input type="hidden" name="completion_attachment_indexes" value="0">
+            {% set media_id = 'task_' ~ t.id ~ '_room_' ~ r.id ~ '_media_0' %}
+            {% set media_camera_name = 'completion_attachment_0_camera' %}
+            {% set media_upload_name = 'completion_attachment_0_photo' %}
+            {% set media_audio_name = 'completion_attachment_0_audio' %}
+            {% set media_comment_name = 'completion_attachment_0_comment' %}
+            {% set media_comment_label = 'Comments' %}
+            {% set media_comment_placeholder = 'Details regarding this uploaded media' %}
+            {% set media_save_label = 'Attach to Task' %}
+            <p><strong>Attachments:</strong></p>
+            {% include "_mobile_media_bar.html" %}
+        </div>
+    </div>
+        <button type="submit" name="completion_save_media_only" value="1">Save</button>
+    </form>
+{% endif %}

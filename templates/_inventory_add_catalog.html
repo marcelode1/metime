@@ -1,0 +1,77 @@
+<style>
+.invAcField{position:relative}
+.invAcMenu{position:absolute;left:0;right:0;top:100%;z-index:40;background:var(--card,#fff);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;max-height:260px;overflow-y:auto;box-shadow:0 8px 18px rgba(15,23,42,.12)}
+.invAcOption{padding:8px 10px;cursor:pointer;border-bottom:1px solid #f1f5f9;line-height:1.3}
+.invAcOption:last-child{border-bottom:none}
+.invAcOption:hover,.invAcOption.invAcActive{background:rgba(37,99,235,.10)}
+.invAcOption .invAcName{font-weight:800;display:block}
+.invAcOption .invAcMeta{color:var(--muted,#64748b);font-size:12px;display:block}
+</style>
+{% if can_edit_inventory() %}
+<script>
+(function(){
+    const itemInput=document.getElementById("invItemName");
+    const modelInput=document.getElementById("invItemModel");
+    const brandInput=document.getElementById("invBrand");
+    const itemMenu=document.getElementById("invItemMenu");
+    const modelMenu=document.getElementById("invModelMenu");
+    if(!itemInput||!modelInput||!brandInput)return;
+    const norm=v=>(v||"").toString().trim().toLowerCase();
+    function rows(){return window.partCatalogData||(window.partCatalogData=[]);}
+    function escapeHtml(s){return (s||"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+    function metaText(p){return [p.item_model,p.brand].filter(Boolean).join(" · ")||"No model / brand";}
+    function fillFrom(part){
+        itemInput.value=part.item_name||"";
+        modelInput.value=part.item_model||"";
+        brandInput.value=part.brand||"";
+        hideMenus();
+    }
+    function search(query){
+        const q=norm(query);
+        if(!q)return [];
+        return rows().filter(p=>norm(p.item_name).includes(q)||norm(p.item_model).includes(q)||norm(p.brand).includes(q)).slice(0,8);
+    }
+    function renderMenu(menu,matches){
+        if(!matches.length){menu.hidden=true;menu.innerHTML="";menu._matches=[];return;}
+        menu.innerHTML=matches.map((p,i)=>
+            `<div class="invAcOption" data-idx="${i}"><span class="invAcName">${escapeHtml(p.item_name)}</span><span class="invAcMeta">${escapeHtml(metaText(p))}</span></div>`
+        ).join("");
+        menu._matches=matches;
+        menu.hidden=false;
+    }
+    function hideMenus(){itemMenu.hidden=true;modelMenu.hidden=true;}
+    itemInput.addEventListener("input",()=>{renderMenu(itemMenu,search(itemInput.value));modelMenu.hidden=true;});
+    modelInput.addEventListener("input",()=>{renderMenu(modelMenu,search(modelInput.value));itemMenu.hidden=true;});
+    itemInput.addEventListener("focus",()=>{if(itemInput.value)renderMenu(itemMenu,search(itemInput.value));});
+    modelInput.addEventListener("focus",()=>{if(modelInput.value)renderMenu(modelMenu,search(modelInput.value));});
+    function bindMenuClick(menu){
+        menu.addEventListener("mousedown",e=>{
+            const opt=e.target.closest(".invAcOption");
+            if(!opt)return;
+            e.preventDefault();
+            const part=(menu._matches||[])[Number(opt.dataset.idx)];
+            if(part)fillFrom(part);
+        });
+    }
+    bindMenuClick(itemMenu);bindMenuClick(modelMenu);
+    document.addEventListener("click",e=>{if(!e.target.closest(".invAcField"))hideMenus();});
+    function bindKeyNav(input,menu){
+        input.addEventListener("keydown",e=>{
+            if(menu.hidden)return;
+            const opts=Array.from(menu.querySelectorAll(".invAcOption"));
+            if(!opts.length)return;
+            let idx=opts.findIndex(o=>o.classList.contains("invAcActive"));
+            if(e.key==="ArrowDown"){e.preventDefault();idx=(idx+1)%opts.length;}
+            else if(e.key==="ArrowUp"){e.preventDefault();idx=(idx-1+opts.length)%opts.length;}
+            else if(e.key==="Enter"){if(idx>=0){e.preventDefault();const part=(menu._matches||[])[idx];if(part)fillFrom(part);}return;}
+            else if(e.key==="Escape"){hideMenus();return;}
+            else return;
+            opts.forEach(o=>o.classList.remove("invAcActive"));
+            opts[idx].classList.add("invAcActive");
+            opts[idx].scrollIntoView({block:"nearest"});
+        });
+    }
+    bindKeyNav(itemInput,itemMenu);bindKeyNav(modelInput,modelMenu);
+})();
+</script>
+{% endif %}

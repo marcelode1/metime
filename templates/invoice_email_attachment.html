@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ inv_number }}</title>
+    <style>
+        @page{size:letter;margin:.35in}
+        body{font-family:Arial,sans-serif;background:#fff;color:#172033;margin:0;padding:0}
+        .invoicePaper{width:920px;max-width:920px;margin:0 auto;background:#fff;color:#172033;padding:20px}
+        .invoiceHeader{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:34px;align-items:start;border-bottom:2px solid #172033;padding-bottom:22px}
+        .invoiceCompanyBox{line-height:1.35}
+        .invoiceLogo{max-width:360px;max-height:216px;object-fit:contain;margin-bottom:14px}
+        .invoiceHeader p,.invoiceBillTo p,.invoiceNotes p{margin:3px 0}
+        .invoiceNotes p{white-space:pre-line}
+        .invoiceMeta{text-align:right}
+        .invoiceMeta h1{font-size:34px;text-transform:uppercase;margin:0 0 12px}
+        .invoiceMetaGrid{display:grid;grid-template-columns:82px minmax(0,1fr);gap:5px 12px;font-size:13px;align-items:start;text-align:right}
+        .invoiceMetaGrid span{color:#64748b;text-transform:uppercase;font-size:11px;text-align:right}
+        .invoiceMetaGrid strong{overflow-wrap:anywhere;word-break:normal;text-align:right}
+        .invoiceBillTo{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin:42px 0 24px;align-items:start}
+        .invoiceBillTo h3,.invoiceNotes h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;color:#64748b;letter-spacing:.04em}
+        .invoiceLinesTable{width:100%;border-collapse:collapse}
+        .invoiceLinesTable th,.invoiceLinesTable td{border-bottom:1px solid #d7dee9;padding:10px;text-align:left;vertical-align:top;font-size:11px}
+        .invoiceLinesTable th{background:#f8fafc;text-transform:uppercase;font-size:11px;color:#475569}
+        .invoiceLinesTable .col-price,.invoiceLinesTable .col-total{text-align:right}
+        .invoiceSummary{display:grid;grid-template-columns:1fr 390px;gap:34px;margin-top:18px;align-items:start}
+        .invoiceTotals{border-top:2px solid #172033;padding:10px 0 0;background:#fff;font-size:13px}
+        .invoiceTotals p{display:flex;justify-content:space-between;gap:24px;margin:8px 0}
+        .invoiceGrandTotal{border-top:1px solid #d7dee9;padding-top:10px;font-size:13px}
+        .invoiceNotes{border-top:2px solid #172033;padding-top:10px;min-height:1px}
+    </style>
+</head>
+<body>
+    <div class="invoicePaper">
+        <div class="invoiceHeader">
+            <div class="invoiceCompanyBox">
+                {% if invoice_logo_src %}<img class="invoiceLogo" src="{{ invoice_logo_src }}" alt="Company Logo">{% endif %}
+                {% if company.company_address %}<p>{{ company.company_address }}</p>{% endif %}
+                {% if company.company_phone %}<p>{{ company.company_phone }}</p>{% endif %}
+                {% if company.company_email %}<p>{{ company.company_email }}</p>{% endif %}
+            </div>
+            <div class="invoiceMeta">
+                <h1>Invoice</h1>
+                <div class="invoiceMetaGrid">
+                    <span>Date</span><strong>{{ inv_date }}</strong>
+                    <span>Invoice #</span><strong>{{ inv_number }}</strong>
+                    {% if inv_terms %}<span>Terms</span><strong>{{ inv_terms }}</strong>{% endif %}
+                    {% if inv_due %}<span>Due</span><strong>{{ inv_due }}</strong>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="invoiceBillTo">
+            <div>
+                <h3>Customer Name</h3>
+                <p><strong>{{ inv_customer_name }}</strong></p>
+                {% if inv_billing_address %}<p>{{ inv_billing_address }}</p>{% endif %}
+                {% if inv_customer_email %}<p>{{ inv_customer_email }}</p>{% endif %}
+                {% if inv_customer_phone %}<p>{{ inv_customer_phone }}</p>{% endif %}
+            </div>
+            <div>
+                <h3>Job Name</h3>
+                <p><strong>{{ inv_project_name }}</strong></p>
+                {% if inv_billing_address %}<p>{{ inv_billing_address }}</p>{% endif %}
+                {% if inv_due %}<p>Due: {{ inv_due }}</p>{% endif %}
+            </div>
+        </div>
+
+        <table class="invoiceLinesTable">
+            <thead>
+                <tr>
+                    <th>Line #</th>
+                    <th>Qty</th>
+                    <th>Item</th>
+                    <th>Description</th>
+                    <th>Location</th>
+                    <th class="col-price">Unit Price</th>
+                    <th class="col-total">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for line in lines %}
+                <tr>
+                    <td>{{ line.index }}</td>
+                    <td>{{ line.quantity }}</td>
+                    <td>{{ line.item_name }}</td>
+                    <td>{{ line.description }}</td>
+                    <td>{{ line.location }}</td>
+                    <td class="col-price">{{ line.unit_price }}</td>
+                    <td class="col-total">{{ line.line_total }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="invoiceSummary">
+            <div class="invoiceNotes">
+                {% if inv_notes %}<h3>Notes</h3><p>{{ inv_notes }}</p>{% endif %}
+            </div>
+            <div class="invoiceTotals">
+                <p><span>Total Material</span><strong>{{ total_material }}</strong></p>
+                <p><span>Total Labor</span><strong>{{ total_labor }}</strong></p>
+                <p><span>Total Sales Tax</span><strong>{{ total_sales_tax }}</strong></p>
+                <p><span>Total Amount</span><strong>{{ total_amount }}</strong></p>
+                <p><span>Payments/Credit</span><strong>{{ payments_credit }}</strong></p>
+                <p class="invoiceGrandTotal"><span>Balance Due</span><strong>{{ balance_due }}</strong></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

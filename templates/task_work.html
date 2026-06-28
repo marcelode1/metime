@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+{% set work_room_id = t.room_id %}
+{% set work_room_name = t.room_name or 'Project general' %}
+{% include "_worker_task_work_card.html" %}
+{% include "_worker_task_work_assets.html" %}
+{% endblock %}

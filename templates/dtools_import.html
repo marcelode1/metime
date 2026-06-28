@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>D-Tools Import</h2>
+    <p class="muted">Enter a D-Tools Project ID and press one button to create the ProjectONus project, rooms, catalog items, and Needs Purchase inventory.</p>
+</div>
+
+<div class="card dtoolsQuickCard">
+    <h3>Quick Import from D-Tools</h3>
+    <p class="muted">Search a D-Tools project by name (or paste its GUID) and press one button. ProjectONus creates/updates the project, its rooms, the Needs-Purchase inventory, and the parts catalog automatically.</p>
+    {% if dtools_cloud_configured() %}
+    <div class="dtoolsFinder">
+        <label>Find a project in D-Tools by name</label>
+        <div class="dtoolsFinderRow">
+            <input id="dtoolsSearchInput" placeholder="e.g. Knights Residence">
+            <button type="button" id="dtoolsSearchBtn" data-url="{{ url_for('dtools_search_projects_json') }}">Search D-Tools</button>
+        </div>
+        <p class="muted">Fills in the GUID for you so you don't have to look it up.</p>
+        <div id="dtoolsSearchStatus" class="dtoolsSearchStatus"></div>
+        <div id="dtoolsSearchResults" class="dtoolsSearchResults"></div>
+    </div>
+    {% endif %}
+    <form method="post" class="dtoolsQuickForm">
+        <input type="hidden" id="dtoolsQuickKind" name="dtools_kind" value="">
+        <input id="dtoolsQuickId" name="dtools_project_id" value="{{ form_values.dtools_project_id }}" placeholder="D-Tools Project GUID e.g. 75E98168-77FF-40C9-A8E5-4F0116C943E6" required autofocus>
+        <button type="submit" name="action" value="create_project">Import from D-Tools</button>
+    </form>
+    {% if not dtools_cloud_configured() %}
+        <p class="flash">D-Tools Cloud API key is missing. Add it in Settings first.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <details class="dtoolsManualWrap">
+    <summary>Advanced / Manual Import &amp; overrides</summary>
+    <p class="muted">Use the proposal number/customer/project name to override what D-Tools returns, or paste the public Request URL / Response JSON from Chrome Network if the private D-Tools Cloud API returns Unauthorized.</p>
+    <form method="post" id="dtoolsImportForm">
+        <div class="grid">
+            <div>
+                <label>Proposal Number</label>
+                <input name="dtools_proposal_number" value="{{ form_values.dtools_proposal_number }}" placeholder="Q-253">
+            </div>
+            <div>
+                <label>Customer Name</label>
+                <input name="customer_name" value="{{ form_values.customer_name }}" placeholder="Steve Patoon">
+            </div>
+            <div>
+                <label>Customer Email</label>
+                <input name="customer_email" value="{{ form_values.customer_email }}" placeholder="customer@email.com">
+            </div>
+            <div>
+                <label>Customer Phone</label>
+                <input name="customer_phone" value="{{ form_values.customer_phone }}" placeholder="Customer phone">
+            </div>
+            <div>
+                <label>Project Name</label>
+                <input name="project_name" value="{{ form_values.project_name }}" placeholder="Audio/Video Network Quote V2">
+            </div>
+            <div>
+                <label>D-Tools quoteId</label>
+                <input name="dtools_proposal_id" value="{{ form_values.dtools_proposal_id }}" placeholder="Example from Network: 77894">
+            </div>
+        </div>
+        <label>Customer Address</label>
+        <input name="customer_address" value="{{ form_values.customer_address }}" placeholder="Customer project/job address">
+        <label>Paste D-Tools Response JSON</label>
+        <textarea name="public_response_json" rows="7" placeholder="Best test option: click GetProposalData in Chrome Network, open Response, copy the JSON, and paste it here.">{{ form_values.public_response_json }}</textarea>
+        <p class="muted">Use this when the public Request URL returns 403 from Render. It lets ProjectONus preview the same proposal data your browser already loaded.</p>
+        <label>Public Proposal Request URL</label>
+        <input name="public_proposal_url" value="{{ form_values.public_proposal_url }}" placeholder="Paste full GetProposalData?quoteId=77894 request URL from Chrome Network">
+        <details class="dtoolsAdvanced">
+            <summary>Advanced Cloud API fields</summary>
+            {% if not dtools_cloud_configured() %}
+                <p class="flash">D-Tools Cloud API key is missing. Add it in Settings before using the private Cloud API endpoints.</p>
+            {% endif %}
+            <div class="grid">
+                <div>
+                    <label>D-Tools Project ID</label>
+                    <input name="dtools_project_id" value="{{ form_values.dtools_project_id }}" placeholder="Internal D-Tools project ID">
+                </div>
+                <div>
+                    <label>Project Endpoint</label>
+                    <input name="project_endpoint_path" value="{{ form_values.project_endpoint_path or 'Projects/GetProject' }}">
+                </div>
+                <div>
+                    <label>Proposal Endpoint</label>
+                    <input name="proposal_endpoint_path" value="{{ form_values.proposal_endpoint_path or 'Quotes/GetQuote' }}">
+                    <p class="muted">If D-Tools support gives a quoteId endpoint, use {id} where the number should go.</p>
+                </div>
+            </div>
+        </details>
+        <button type="submit" name="action" value="preview">Import Preview</button>
+        <button type="submit" name="action" value="create_project" class="btn-secondary">Create ProjectONus Project</button>
+        <a class="btn-link btn-secondary" href="{{ url_for('settings') }}">D-Tools Settings</a>
+    </form>
+    </details>
+</div>
+
+{% if result %}
+{% set result_status = result.get('status', 'error') %}
+{% set result_message = result.get('message', '') %}
+{% set result_project_info = result.get('project_info') or {} %}
+{% set result_locations = result.get('locations') or [] %}
+{% set result_items = result.get('items') or [] %}
+<div class="card dtoolsResult dtoolsResult-{{ result_status }}">
+    <h3>Import Status</h3>
+    <p><strong>{{ result_status|title }}:</strong> {{ result_message }}</p>
+    {% if result_project_info %}
+        <div class="dtoolsSummaryGrid">
+            <div><span>Project</span><strong>{{ result_project_info.get('project_name') or '-' }}</strong></div>
+            <div><span>Customer</span><strong>{{ result_project_info.get('customer_name') or '-' }}</strong></div>
+            <div><span>Email</span><strong>{{ result_project_info.get('customer_email') or '-' }}</strong></div>
+            <div><span>Phone</span><strong>{{ result_project_info.get('customer_phone') or '-' }}</strong></div>
+            <div><span>Proposal #</span><strong>{{ result_project_info.get('proposal_number') or '-' }}</strong></div>
+            <div><span>Address</span><strong>{{ result_project_info.get('address') or '-' }}</strong></div>
+        </div>
+    {% endif %}
+    {% if result_locations %}
+        <h4>Detected Rooms / Locations</h4>
+        <div class="dtoolsPills">
+            {% for location in result_locations %}
+                <span>{{ location }}</span>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% if result_items %}
+        <h4>Sample Items</h4>
+        <div class="dtoolsImportTableWrap">
+            <table class="dtoolsImportTable">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Qty</th>
+                        <th>Item</th>
+                        <th>Brand / Model</th>
+                        <th>Location</th>
+                        <th>Unit Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in result_items %}
+                    <tr>
+                        <td><span class="dtoolsType">{{ 'Labor' if item.get('item_type') == 'service' else 'Material' }}</span></td>
+                        <td>{{ item.get('quantity') }}</td>
+                        <td>
+                            <strong>{{ item.get('item_name') }}</strong>
+                            {% if item.get('description') %}<span class="muted dtoolsSmall">{{ item.get('description') }}</span>{% endif %}
+                        </td>
+                        <td>{{ item.get('brand') or '-' }}{% if item.get('model') %}<span class="muted dtoolsSmall">{{ item.get('model') }}</span>{% endif %}</td>
+                        <td>{{ item.get('location') or '-' }}</td>
+                        <td>{{ format_invoice_money(item.get('unit_price') or 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+    {% if result_status == 'success' %}
+        <div class="dtoolsResultActions">
+            <button type="submit" form="dtoolsImportForm" name="action" value="create_project">Create ProjectONus Project</button>
+            <span class="muted">This will create/update the project, create detected rooms, and add material items to project inventory as Needs Purchase.</span>
+        </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+    <h3>Recent Import Logs</h3>
+    <div class="dtoolsImportTableWrap">
+        <table class="dtoolsImportTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Project ID</th>
+                    <th>Proposal ID</th>
+                    <th>Counts</th>
+                    <th>Message / Error</th>
+                    <th>Admin</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ format_datetime(log.created_at) }}</td>
+                    <td><span class="dtoolsStatus dtoolsStatus-{{ log.status }}">{{ log.status|title }}</span></td>
+                    <td>{{ log.dtools_project_id or '-' }}</td>
+                    <td>{{ log.dtools_proposal_id or '-' }}</td>
+                    <td>{{ log.material_count }} material / {{ log.labor_count }} labor / {{ log.room_count }} room</td>
+                    <td>
+                        {{ log.message or log.error_log or '-' }}
+                        {% if log.error_log %}<span class="muted dtoolsSmall">{{ log.error_log }}</span>{% endif %}
+                    </td>
+                    <td>{{ log.created_by_name or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7">No D-Tools import logs yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.dtoolsResult{border-left:4px solid var(--primary)}.dtoolsResult-error{border-left-color:var(--danger)}
+.dtoolsSummaryGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:12px 0}.dtoolsSummaryGrid div{border:1px solid var(--border);border-radius:8px;padding:10px;background:rgba(248,250,252,.72)}.dtoolsSummaryGrid span{display:block;color:var(--muted);font-size:12px;font-weight:800;text-transform:uppercase}.dtoolsSummaryGrid strong{display:block;margin-top:4px}
+.dtoolsPills{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 14px}.dtoolsPills span,.dtoolsType,.dtoolsStatus{display:inline-flex;border:1px solid var(--border);border-radius:999px;padding:3px 8px;font-size:12px;font-weight:800;background:#eef2ff;color:#1d4ed8}
+.dtoolsStatus-success{background:#dcfce7;color:#166534}.dtoolsStatus-error{background:#fee2e2;color:#991b1b}
+.dtoolsImportTableWrap{overflow:auto;border:1px solid var(--border);border-radius:8px}.dtoolsImportTable{width:100%;min-width:980px;border-collapse:collapse}.dtoolsImportTable th,.dtoolsImportTable td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top;font-size:13px}.dtoolsImportTable th{background:#f8fafc;color:#475569;text-transform:uppercase;font-size:11px}.dtoolsSmall{display:block;font-size:12px;margin-top:2px;max-width:420px}
+.dtoolsAdvanced{margin:10px 0;border:1px solid var(--border);border-radius:8px;padding:10px}.dtoolsAdvanced summary{cursor:pointer;font-weight:800}
+.dtoolsQuickCard{border-left:4px solid var(--primary)}
+.dtoolsQuickForm{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}.dtoolsQuickForm input{flex:1;min-width:260px}.dtoolsQuickForm button{margin:0!important;width:auto!important}
+.dtoolsManualWrap>summary{cursor:pointer;font-weight:800;font-size:18px;margin-bottom:6px}
+.dtoolsFinder{border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;background:rgba(248,250,252,.6)}
+.dtoolsFinderRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.dtoolsFinderRow input{flex:1;min-width:220px}.dtoolsFinderRow button{margin:0!important;width:auto!important}
+.dtoolsSearchStatus{margin-top:8px;font-weight:700}.dtoolsSearchStatus.err{color:#dc2626}.dtoolsSearchStatus.ok{color:#16a34a}
+.dtoolsSearchResults{display:grid;gap:6px;margin-top:8px}
+.dtoolsResultRow{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--card,#fff)}
+.dtoolsResultRow .meta{color:var(--muted,#64748b);font-size:12px}
+.dtoolsResultRow button{margin:0!important;width:auto!important}
+.dtoolsResultActions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+</style>
+{% if dtools_cloud_configured() %}
+<script>
+(function(){
+    const btn=document.getElementById("dtoolsSearchBtn");
+    const input=document.getElementById("dtoolsSearchInput");
+    const status=document.getElementById("dtoolsSearchStatus");
+    const results=document.getElementById("dtoolsSearchResults");
+    const idInput=document.getElementById("dtoolsQuickId");
+    const kindInput=document.getElementById("dtoolsQuickKind");
+    if(!btn||!input)return;
+    function esc(s){return (s||"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+    async function runSearch(){
+        status.className="dtoolsSearchStatus";status.textContent="Searching D-Tools…";results.innerHTML="";
+        const fd=new FormData();fd.set("q",input.value.trim());
+        btn.disabled=true;
+        try{
+            const resp=await fetch(btn.dataset.url,{method:"POST",body:fd});
+            const data=await resp.json();
+            if(!resp.ok||!data.ok)throw new Error(data.error||"Search failed.");
+            if(!data.results.length){status.textContent="No matching D-Tools projects or opportunities found.";return;}
+            status.className="dtoolsSearchStatus ok";status.textContent=`Found ${data.results.length} result(s). Click one to use it.`;
+            results.innerHTML=data.results.map(p=>{
+                const kindLabel=p.kind==="opportunity"?"Opportunity / Quote":"Project";
+                const meta=[kindLabel,p.number,p.client,p.stage].filter(Boolean).map(esc).join(" · ");
+                return `<div class="dtoolsResultRow"><div><strong>${esc(p.name)}</strong><div class="meta">${meta}</div></div><button type="button" class="dtoolsUse" data-id="${esc(p.id)}" data-kind="${esc(p.kind||'')}">Use this</button></div>`;
+            }).join("");
+        }catch(err){
+            status.className="dtoolsSearchStatus err";status.textContent=err.message||"Search failed.";
+        }finally{btn.disabled=false;}
+    }
+    btn.addEventListener("click",runSearch);
+    input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();runSearch();}});
+    results.addEventListener("click",e=>{
+        const use=e.target.closest(".dtoolsUse");
+        if(!use)return;
+        if(idInput)idInput.value=use.dataset.id;
+        if(kindInput)kindInput.value=use.dataset.kind||"";
+        status.className="dtoolsSearchStatus ok";status.textContent="Selected. Now press Import from D-Tools.";
+        results.innerHTML="";
+        if(idInput)idInput.scrollIntoView({block:"center"});
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

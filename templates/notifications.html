@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Notifications</h2>
+    <form method="post"><button type="submit">Mark All as Read</button></form>
+</div>
+<div class="card">
+    {% for e in events %}
+        <div id="notification-{{ e.id }}" class="card" style="border-left:6px solid {% if e.is_read %}#64748b{% else %}#dc2626{% endif %};">
+            {% if e.event_type == 'task_assigned' %}
+                <strong>Task assigned</strong>{% if is_main_admin() %} to {{ e.user_name or 'Unknown user' }}{% endif %}<br>
+            {% elif e.event_type == 'task_received' %}
+                <strong>Task received</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% elif e.event_type == 'task_completed' %}
+                <strong>Task completed</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% elif e.event_type == 'task_updated' %}
+                <strong>Task updated</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% elif e.event_type == 'field_comment_added' %}
+                <strong>Comment added</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% elif e.event_type == 'field_picture_added' %}
+                <strong>Picture added</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% elif e.event_type == 'field_audio_added' %}
+                <strong>Audio added</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% elif e.event_type == 'field_note_added' %}
+                <strong>Field update added</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% elif e.event_type == 'attendance_check_in' %}
+                <strong>Clock in</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% elif e.event_type == 'attendance_check_out' %}
+                <strong>Clock out</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% elif e.event_type == 'login' %}
+                <strong>Login</strong> by {{ e.user_name or 'Unknown user' }}<br>
+            {% endif %}
+            {% if e.message %}<p>{{ e.message }}</p>{% endif %}
+            {% if e.task_title %}
+                <p><strong>Task #:</strong> {{ e.task_number or '-' }}<br><strong>Task:</strong> {{ task_display_name(e) }}{% if e.project_name %}<br><strong>Project:</strong> {{ e.project_name }}{% endif %}</p>
+            {% elif e.project_name or e.room_name %}
+                <p>{% if e.project_name %}<strong>Project:</strong> {{ e.project_name }}{% endif %}{% if e.room_name %}<br><strong>Room:</strong> {{ e.room_name }}{% endif %}</p>
+            {% endif %}
+            <span class="muted">{{ e.user_email }} - {{ e.role }} - {{ format_date(e.created_at) }} {{ format_time(e.created_at) }}</span>
+            {% if e.event_type == 'task_assigned' and e.task_id and not is_main_admin() %}
+                {% if not e.task_accepted_at %}
+                    <form method="post" action="{{ url_for('receive_task', task_id=e.task_id) }}">
+                        <input type="hidden" name="next" value="{{ url_for('assignment_tasks', task_id=e.task_id, calendar_task=e.task_id) }}">
+                        <button type="submit">Received</button>
+                    </form>
+                {% else %}
+                    <p class="muted">Confirmed {{ format_datetime(e.task_accepted_at) }}</p>
+                    <a class="btn-link btn-secondary" href="{{ url_for('assignment_tasks', task_id=e.task_id) }}">Open Tasks</a>
+                {% endif %}
+            {% else %}
+                <a class="btn-link btn-secondary" href="{{ url_for('open_notification', notification_id=e.id) }}">Open Notification</a>
+            {% endif %}
+        </div>
+    {% else %}
+        <p>No notifications yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

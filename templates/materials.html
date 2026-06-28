@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Project Inventory</h2>
+    <p><strong>Project:</strong> {{ project.name }}</p>
+    <a class="btn-link btn-secondary" href="{{ url_for('project', project_id=project.id) }}">Back to Project</a>
+    <a class="btn-link" href="{{ url_for('inventory', project_id=project.id) }}">Open Main Inventory</a>
+</div>
+
+{% if can_edit_inventory() %}
+<div class="card">
+    <h3>Add Item to This Project</h3>
+    <form method="post" enctype="multipart/form-data">
+        <div class="grid">
+            <div><label>Date</label><input type="date" name="item_date" value="{{ today }}" required></div>
+            <div><label>Quantity</label><input type="number" name="quantity" step="0.01" min="0" required></div>
+            <div><label>Item Name</label><input name="item_name" class="js-part-item" list="partCatalogNameList" required></div>
+            <div><label>Item Model #</label><input name="item_model" class="js-part-model" list="partCatalogModelList"></div>
+            <div><label>Brand</label><input name="brand" class="js-part-brand" list="partCatalogBrandList"></div>
+            <div>
+                <label>Supplier</label>
+                <select name="supplier_id">
+                    <option value="">No supplier</option>
+                    {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>New or Used</label>
+                <select name="item_condition">{% for value, label in condition_options.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+            </div>
+            <div>
+                <label>Room Allocation</label>
+                <select name="room_id">
+                    <option value="">Project general</option>
+                    {% for r in rooms %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Where Located</label>
+                <select name="location_type">{% for value, label in location_options.items() %}<option value="{{ value }}" {% if value == "job_site" %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+            </div>
+            <div><label>Location Detail</label><input name="location_detail" placeholder="Room, truck, shelf, bin"></div>
+            <div>
+                <label>Status</label>
+                <select name="status">{% for value, label in status_options.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+            </div>
+            <div><label>Picture</label><input type="file" name="picture" accept="image/*,.heic,.heif"></div>
+            <div><label>Take Picture</label><input type="file" name="picture_camera" accept="image/*,.heic,.heif" capture="environment"></div>
+        </div>
+        <label>Used / Purchase Note</label>
+        <textarea name="used_note" rows="2"></textarea>
+        <button type="submit">Add Inventory Item</button>
+    </form>
+</div>
+{% endif %}
+
+{% if is_main_admin() %}
+<div class="card">
+    <h3>Import from D-Tools Cloud into this project</h3>
+    <p class="muted">Merges D-Tools data into <strong>{{ project.name }}</strong> without deleting anything. Rooms that already exist are matched and kept; rooms that don't exist are created; items already imported are skipped.</p>
+    {% if dtools_cloud_configured() %}
+        {% set dtools = dtools_cloud_config() %}
+        <div class="dtoolsFinder">
+            <label>Find the project in D-Tools by name</label>
+            <div class="dtoolsFinderRow">
+                <input id="dtoolsSearchInput" value="{{ project.name }}" placeholder="e.g. Knights Residence">
+                <button type="button" id="dtoolsSearchBtn" data-url="{{ url_for('dtools_search_projects_json') }}">Search D-Tools</button>
+            </div>
+            <p class="muted">Searches your D-Tools projects and fills in the GUID for you, so you don't have to look it up.</p>
+            <div id="dtoolsSearchStatus" class="dtoolsSearchStatus"></div>
+            <div id="dtoolsSearchResults" class="dtoolsSearchResults"></div>
+        </div>
+        <form method="post" action="{{ url_for('import_dtools_inventory', project_id=project.id) }}">
+            <input type="hidden" id="dtoolsKind" name="dtools_kind" value="">
+            <div class="grid">
+                <div>
+                    <label>D-Tools Project or Quote GUID</label>
+                    <input id="dtoolsRefInput" name="dtools_ref" value="{{ project.dtools_cloud_project_ref or '' }}" placeholder="GUID e.g. 75E98168-77FF-40C9-A8E5-4F0116C943E6">
+                </div>
+                <div>
+                    <label>Endpoint Path</label>
+                    <input name="dtools_endpoint_path" value="{{ dtools.material_path or 'Projects/GetProject' }}">
+                </div>
+            </div>
+            <button type="submit">Import D-Tools Material List</button>
+            <button type="submit" formaction="{{ url_for('preview_dtools_inventory', project_id=project.id) }}" class="btn-secondary">Preview D-Tools Items</button>
+        </form>
+        <p class="muted">Preview first to confirm the D-Tools fields. Imported physical products are added to this project inventory as Needs Purchase. Services/labor are saved to Parts / Services only.</p>
+        <style>
+        .dtoolsJsonFallback{margin:8px 0 12px;border:1px solid var(--border);border-radius:8px;padding:10px}.dtoolsJsonFallback summary{cursor:pointer;font-weight:800}
+        .dtoolsFinder{border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;background:rgba(248,250,252,.6)}
+        .dtoolsFinderRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.dtoolsFinderRow input{flex:1;min-width:220px}.dtoolsFinderRow button{margin:0!important;width:auto!important}
+        .dtoolsSearchStatus{margin-top:8px;font-weight:700}.dtoolsSearchStatus.err{color:#dc2626}.dtoolsSearchStatus.ok{color:#16a34a}
+        .dtoolsSearchResults{display:grid;gap:6px;margin-top:8px}
+        .dtoolsResultRow{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--card,#fff)}
+        .dtoolsResultRow .meta{color:var(--muted,#64748b);font-size:12px}
+        .dtoolsResultRow button{margin:0!important;width:auto!important}
+        </style>
+        <script>
+        (function(){
+            const btn=document.getElementById("dtoolsSearchBtn");
+            const input=document.getElementById("dtoolsSearchInput");
+            const status=document.getElementById("dtoolsSearchStatus");
+            const results=document.getElementById("dtoolsSearchResults");
+            const refInput=document.getElementById("dtoolsRefInput");
+            const kindInput=document.getElementById("dtoolsKind");
+            const endpointInput=document.querySelector('input[name="dtools_endpoint_path"]');
+            if(!btn||!input)return;
+            function esc(s){return (s||"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+            async function runSearch(){
+                status.className="dtoolsSearchStatus";status.textContent="Searching D-Tools…";results.innerHTML="";
+                const fd=new FormData();fd.set("q",input.value.trim());
+                btn.disabled=true;
+                try{
+                    const resp=await fetch(btn.dataset.url,{method:"POST",body:fd});
+                    const data=await resp.json();
+                    if(!resp.ok||!data.ok)throw new Error(data.error||"Search failed.");
+                    if(!data.results.length){status.textContent="No matching D-Tools projects or opportunities found.";return;}
+                    status.className="dtoolsSearchStatus ok";status.textContent=`Found ${data.results.length} result(s). Click one to use it.`;
+                    results.innerHTML=data.results.map(p=>{
+                        const kindLabel=p.kind==="opportunity"?"Opportunity / Quote":"Project";
+                        const meta=[kindLabel,p.number,p.client,p.stage].filter(Boolean).map(esc).join(" · ");
+                        return `<div class="dtoolsResultRow"><div><strong>${esc(p.name)}</strong><div class="meta">${meta}</div></div><button type="button" class="dtoolsUse" data-id="${esc(p.id)}" data-kind="${esc(p.kind||'')}">Use this</button></div>`;
+                    }).join("");
+                }catch(err){
+                    status.className="dtoolsSearchStatus err";status.textContent=err.message||"Search failed.";
+                }finally{btn.disabled=false;}
+            }
+            btn.addEventListener("click",runSearch);
+            input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();runSearch();}});
+            results.addEventListener("click",e=>{
+                const use=e.target.closest(".dtoolsUse");
+                if(!use)return;
+                if(refInput)refInput.value=use.dataset.id;
+                if(kindInput)kindInput.value=use.dataset.kind||"";
+                if(endpointInput)endpointInput.value=use.dataset.kind==="opportunity"?"Quotes/GetQuote":"Projects/GetProject";
+                status.className="dtoolsSearchStatus ok";status.textContent="Selected. Now press Import or Preview below.";
+                results.innerHTML="";
+                if(refInput)refInput.scrollIntoView({block:"center"});
+            });
+        })();
+        </script>
+    {% else %}
+        <p class="muted">Add your D-Tools Cloud API key in Settings before importing materials.</p>
+        <a class="btn-link btn-secondary" href="{{ url_for('settings') }}">Open Settings</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+    <h3>Project Inventory List</h3>
+    <div class="inventoryWrap">
+        <table class="inventoryTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Qty</th>
+                    <th>Item</th>
+                    <th>Model #</th>
+                    <th>Brand</th>
+                    <th>Supplier</th>
+                    <th>Condition</th>
+                    <th>Located</th>
+                    <th>Room</th>
+                    <th>Status</th>
+                    <th>Picture</th>
+                    {% if can_edit_inventory() %}<th>Action</th>{% endif %}
+                    {% if is_main_admin() %}<th>Delete</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for m in materials %}
+                <tr class="inventoryStatus inventory-{{ m.status }}">
+                    <td>{{ m.item_date }}</td>
+                    <td>{{ m.quantity }}</td>
+                    <td><strong>{{ m.item_name }}</strong>{% if m.used_note %}<p class="muted">{{ m.used_note }}</p>{% endif %}</td>
+                    <td>{{ m.item_model or '-' }}</td>
+                    <td>{{ m.brand or '-' }}</td>
+                    <td>
+                        {% if can_edit_inventory() %}
+                        <form method="post" action="{{ url_for('update_inventory_supplier', item_id=m.id) }}" class="inventoryCompactForm">
+                            <input type="hidden" name="next" value="{{ request.full_path }}">
+                            <select name="supplier_id" onchange="this.form.submit()">
+                                <option value="">No supplier</option>
+                                {% for s in suppliers %}
+                                    <option value="{{ s.id }}" {% if m.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        {% else %}
+                            {{ m.supplier_name or '-' }}
+                        {% endif %}
+                        {% if m.supplier_address %}<a class="muted inventorySmall" target="_blank" href="{{ maps_directions_url(m.supplier_address) }}">Map</a>{% endif %}
+                    </td>
+                    <td>{{ inventory_condition_label(m.item_condition) }}</td>
+                    <td>
+                        {% set location_unavailable = m.status in ['needs_purchase', 'unavailable', 'backordered'] %}
+                        {% if location_unavailable %}
+                            <span class="locationUnavailable">Unavailable</span>
+                        {% elif can_edit_inventory() %}
+                        <form method="post" action="{{ url_for('update_inventory_location', item_id=m.id) }}" class="inventoryCompactForm">
+                            <input type="hidden" name="next" value="{{ request.full_path }}">
+                            <input type="hidden" name="location_detail" value="{{ m.location_detail or '' }}">
+                            <select name="location_type" onchange="this.form.submit()">
+                                {% for value, label in location_options.items() %}
+                                    <option value="{{ value }}" {% if m.location_type == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        {% else %}
+                            {{ inventory_location_label(m.location_type) }}{% if m.location_detail %}<br><span class="muted">{{ m.location_detail }}</span>{% endif %}
+                        {% endif %}
+                    </td>
+                    <td>{{ m.room_name or 'Project general' }}</td>
+                    <td><span class="statusBadge">{{ inventory_status_label(m.status) }}</span>{% if m.used_by_name %}<br><span class="muted">By {{ m.used_by_name }}</span>{% endif %}</td>
+                    <td>{% if m.picture_file %}<img class="inventoryPic" src="{{ url_for('storage_file', storage_path=m.picture_file) }}">{% else %}-{% endif %}</td>
+                    {% if can_edit_inventory() %}
+                    <td>
+                        <form method="post" action="{{ url_for('update_inventory_status', item_id=m.id) }}">
+                            <input type="hidden" name="next" value="{{ request.full_path }}">
+                            <input type="hidden" name="project_id" value="{{ project.id }}">
+                            <select name="status" class="inventoryActionSelect" data-current-status="{{ m.status }}" data-pickup-url="{{ url_for('create_global_task', project_id=project.id, room_id=m.room_id, supplier_id=m.supplier_id, pickup_item_id=m.id) }}">
+                                {% for value, label in status_options.items() %}<option value="{{ value }}" {% if m.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                                <option value="__create_pickup_task__">Create a pickup task</option>
+                            </select>
+                        </form>
+                    </td>
+                    {% endif %}
+                    {% if is_main_admin() %}
+                    <td>
+                        <form method="post" action="{{ url_for('delete_inventory_item', item_id=m.id) }}" onsubmit="return confirm('Delete this inventory item?');">
+                            <input type="hidden" name="next" value="{{ request.full_path }}">
+                            <button type="submit" class="btn-danger">Delete</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+            {% else %}
+                <tr><td colspan="13">No project inventory yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.inventoryWrap{overflow-x:auto}.inventoryTable{width:100%;min-width:1050px;border-collapse:collapse}
+.inventoryTable th,.inventoryTable td{border:1px solid var(--border);padding:10px;text-align:left;vertical-align:top}.inventoryTable th{background:#eef2f7}
+.inventory-available{background:#dcfce7}.inventory-used{background:#fee2e2}.inventory-needs_purchase{background:#ffedd5}.inventory-picked_up{background:#dbeafe}.inventory-purchased_waiting_arrival{background:#e0f2fe}.inventory-unavailable{background:#f1f5f9}.inventory-backordered{background:#fef3c7}
+.statusBadge{display:inline-block;padding:6px 10px;border-radius:999px;color:white;font-weight:800}.inventory-available .statusBadge{background:#16a34a}.inventory-used .statusBadge{background:#dc2626}.inventory-needs_purchase .statusBadge{background:#f59e0b}.inventory-picked_up .statusBadge{background:#2563eb}.inventory-purchased_waiting_arrival .statusBadge{background:#0284c7}.inventory-unavailable .statusBadge{background:#64748b}.inventory-backordered .statusBadge{background:#d97706}
+.inventoryPic{max-width:28px;border-radius:8px;border:1px solid var(--border)}
+.inventoryCheck{display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;margin:6px 0;font-weight:800}.inventoryCheck input{width:auto;min-height:auto}
+.inventoryCompactForm{display:grid;gap:6px;min-width:145px}.inventoryCompactForm select,.inventoryCompactForm input{min-height:34px;padding:6px 8px;font-size:13px}.inventorySmall{display:block;font-size:12px;margin-top:4px}
+.locationUnavailable{display:inline-flex;border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:#f8fafc;color:#64748b;font-weight:800}
+</style>
+<script>
+document.querySelectorAll(".inventoryActionSelect").forEach(select => {
+    select.addEventListener("change", () => {
+        if (select.value === "__create_pickup_task__") {
+            window.location.href = select.dataset.pickupUrl;
+            select.value = select.dataset.currentStatus || "";
+            return;
+        }
+        select.form.submit();
+    });
+});
+</script>
+{% include "_part_catalog_autocomplete.html" %}
+{% endblock %}
