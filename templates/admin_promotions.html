@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Promotions - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Promotions</h1>
+    <p class="muted">{{ total }} client{{ '' if total == 1 else 's' }} opted in to receive promotions.</p>
+    <a class="btn btn-ghost" href="{{ url_for('admin_dashboard') }}" style="margin:0">&larr; Back to Clients</a>
+</div>
+
+{% if total %}
+<div class="card">
+    <h3>Send a Promotion</h3>
+    <p class="muted">Write your offer below, then tap <strong>Compose Email to All</strong>. Your email app opens with every opted-in client in <strong>BCC</strong> (they won't see each other's address) &mdash; just hit send.</p>
+    <label>Subject</label>
+    <input id="promoSubject" placeholder="e.g. 20% off massages this month!" style="margin:0 0 6px" value="{{ business_name }} — Special Offer">
+    <label>Message</label>
+    <textarea id="promoMessage" placeholder="Write your promotion here...">Hi!
+
+We have a special offer just for you at {{ business_name }}:
+
+[ describe your promotion here ]
+
+Book your session soon — we can't wait to see you!
+
+— {{ business_name }}</textarea>
+    <button type="button" id="promoSendBtn">Compose Email to All ({{ total }})</button>
+    <button type="button" class="btn-ghost" id="promoCopyBtn">Copy Email List</button>
+    <p class="muted" id="promoStatus" style="min-height:16px;margin-top:8px"></p>
+</div>
+
+<div class="card">
+    <h3>Opted-In Clients</h3>
+    <table>
+        <thead><tr>
+            <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Name</th>
+            <th style="text-align:left;padding:8px;border-bottom:1px solid var(--border)">Email</th>
+        </tr></thead>
+        <tbody>
+        {% for c in clients %}
+            <tr>
+                <td style="padding:10px 8px;border-bottom:1px solid var(--border)"><strong>{{ c.full_name }}</strong></td>
+                <td style="padding:10px 8px;border-bottom:1px solid var(--border)">{{ c.email }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    var promoEmails = {{ emails|tojson }};
+    document.getElementById("promoSendBtn").addEventListener("click", function(){
+        var status = document.getElementById("promoStatus");
+        if(!promoEmails.length){ status.style.color="#dc2626"; status.textContent="No opted-in clients."; return; }
+        var subject = (document.getElementById("promoSubject").value || "").trim();
+        var body = (document.getElementById("promoMessage").value || "").trim();
+        var bcc = promoEmails.join(",");
+        status.style.color=""; status.textContent="Opening your email app...";
+        window.location.href = "mailto:?bcc=" + encodeURIComponent(bcc) +
+            "&subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    });
+    document.getElementById("promoCopyBtn").addEventListener("click", function(){
+        var status = document.getElementById("promoStatus");
+        var list = promoEmails.join(", ");
+        if(navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(list).then(function(){
+                status.style.color=""; status.textContent="Email list copied to clipboard.";
+            }).catch(function(){ status.style.color="#dc2626"; status.textContent="Could not copy."; });
+        } else {
+            window.prompt("Copy these emails:", list);
+        }
+    });
+</script>
+{% else %}
+<div class="card">
+    <p class="muted">No clients have opted in yet. When a client checks "participate in our promotion list" on the intake form, they'll appear here.</p>
+</div>
+{% endif %}
+{% endblock %}

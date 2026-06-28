@@ -79,6 +79,7 @@ SCHEMA = [
         consent_reminders BOOLEAN NOT NULL DEFAULT FALSE,
         consent_cancellation BOOLEAN NOT NULL DEFAULT FALSE,
         consent_photo_release BOOLEAN NOT NULL DEFAULT FALSE,
+        promo_opt_in BOOLEAN NOT NULL DEFAULT FALSE,
         client_signature TEXT,
         signed_date TEXT,
         created_at TEXT,
@@ -112,6 +113,7 @@ MIGRATIONS = [
     "ALTER TABLE client_intake ADD COLUMN IF NOT EXISTS consent_photo_release BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE client_intake ADD COLUMN IF NOT EXISTS client_signature TEXT",
     "ALTER TABLE client_intake ADD COLUMN IF NOT EXISTS signed_date TEXT",
+    "ALTER TABLE client_intake ADD COLUMN IF NOT EXISTS promo_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
 ]
 
 CONDITION_OPTIONS = [
@@ -399,6 +401,7 @@ def intake():
             "consent_reminders": "consent_reminders" in request.form,
             "consent_cancellation": "consent_cancellation" in request.form,
             "consent_photo_release": "consent_photo_release" in request.form,
+            "promo_opt_in": "promo_opt_in" in request.form,
             "client_signature": text("client_signature"),
             "signed_date": text("signed_date") or now_iso()[:10],
         }
@@ -525,6 +528,21 @@ def admin_dashboard():
     conn.close()
     return render_template("admin_dashboard.html", clients=clients, q=q, total=total,
                            intake_url=url_for("intake", _external=True),
+                           business_name=get_setting("card_business_name", APP_NAME))
+
+
+@app.route("/admin/promotions")
+@admin_required
+def admin_promotions():
+    conn = db()
+    clients = conn.execute(
+        "SELECT full_name, email FROM client_intake "
+        "WHERE promo_opt_in = TRUE AND COALESCE(email, '') <> '' "
+        "ORDER BY lower(full_name)"
+    ).fetchall()
+    conn.close()
+    emails = [c["email"] for c in clients]
+    return render_template("admin_promotions.html", clients=clients, emails=emails, total=len(clients),
                            business_name=get_setting("card_business_name", APP_NAME))
 
 
