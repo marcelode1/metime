@@ -1,996 +1,169 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-    <title>ProjectONus</title>
+    <meta charset="utf-8">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#8b5cf6">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="ProjectONus">
+    <meta name="apple-mobile-web-app-title" content="MeTime">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icon-192.png') }}">
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icon.svg') }}">
     <style>
-        :root{--bg:#f6f8fb;--card:#fff;--text:#172033;--muted:#64748b;--primary:#2563eb;--primary-dark:#1d4ed8;--danger:#dc2626;--border:#d7dee9;--shadow:0 6px 22px rgba(15,23,42,.08)}
-        body.dark{--bg:#0b1120;--card:#111827;--text:#e5e7eb;--muted:#94a3b8;--primary:#60a5fa;--primary-dark:#3b82f6;--danger:#f87171;--border:#263244;--shadow:0 8px 28px rgba(0,0,0,.35)}
+        :root{--bg:#f6f2fb;--card:#fff;--text:#2a2140;--muted:#7c708f;--brand:#7c3aed;--brand-dark:#6d28d9;
+              --accent:#c9a24a;--magenta:#b01e68;--danger:#dc2626;--border:#e7defa;--radius:18px}
         *{box-sizing:border-box}
-        body{font-family:Arial,sans-serif;margin:0;background:var(--bg);color:var(--text);transition:.2s;padding-bottom:env(safe-area-inset-bottom)}
-        header{background:#0f172a;color:white;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 4px 14px rgba(0,0,0,.16)}
-        header a{color:white;margin-left:12px;text-decoration:none;font-weight:700}.brand{font-weight:900;letter-spacing:.2px}.brandWrap{display:flex;align-items:center;gap:10px}.brandText{display:flex;flex-direction:column;line-height:1.15}.brandUser{display:none;color:#cbd5e1;font-size:12px;font-weight:700;margin-top:2px;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brandLogo{width:36px;height:36px;object-fit:contain;background:white;border-radius:8px;padding:4px}.topNav{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end}.navDropdown{position:relative;margin-left:12px}.navDropdownButton{color:white;font-weight:700;cursor:default;padding:8px 0}.navDropdownMenu{display:none;position:absolute;top:100%;left:0;z-index:240;min-width:190px;background:#1e293b;border:1px solid #334155;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.28);padding:8px}.navDropdown:hover .navDropdownMenu,.navDropdown:focus-within .navDropdownMenu{display:block}.navDropdownMenu a{display:flex;margin:0;color:white;padding:10px 12px;border-radius:8px;white-space:nowrap}.navDropdownMenu a:hover{background:#334155}.mobileMenuButton{display:none}.mobileMenuPanel{display:none}
-        main{padding:20px;max-width:1240px;margin:auto}.card{background:var(--card);padding:20px;border-radius:18px;margin-bottom:18px;box-shadow:var(--shadow);border:1px solid var(--border)}
-        input,textarea,select,button{padding:14px;margin:7px 0;width:100%;font-size:17px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text)}
-        button,.btn-link{min-height:54px;background:var(--primary);color:white;border:0;border-radius:14px;cursor:pointer;font-weight:800;text-align:center;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:14px 18px;margin:6px 0;touch-action:manipulation}
-        button:hover,.btn-link:hover{background:var(--primary-dark)}.btn-secondary{background:#475569!important}.btn-danger{background:var(--danger)!important}
-        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.photo,img.photo{max-width:100%;border-radius:14px;border:1px solid var(--border)}
-        @media(min-width:761px){.photo,img.photo{max-width:25%}}
-        .flash{background:#fff3cd;color:#1f2937;padding:12px;border-radius:12px;margin-bottom:14px}.desktop-only{display:block}.muted{color:var(--muted)}.taskContactInfo{border:1px solid var(--border);border-radius:8px;padding:10px;margin:2px 0 16px;background:rgba(14,165,233,.08)}.taskContactInfo p{margin:0 0 8px}.taskCallButton{width:auto!important;min-width:120px!important;margin:2px 0 0!important}
-        .dark-toggle{width:auto;min-height:38px;padding:8px 12px;background:#334155!important;margin-left:10px;border-radius:999px;font-size:14px}.bottom-nav{display:none}.backButton{width:auto;min-height:42px;padding:9px 14px;margin:0 0 12px;background:#475569!important;border-radius:10px;font-size:14px}
-        @media(min-width:761px){body{font-family:"Segoe UI",Arial,sans-serif;line-height:1.42;background:#f3f6fa}body.dark{background:#0b1120}header{padding:10px 18px;gap:12px;box-shadow:0 1px 0 rgba(15,23,42,.16)}header a,.navDropdownButton{font-size:14px;font-weight:700;padding:7px 0}.brand{font-size:18px}.brandLogo{width:32px;height:32px;border-radius:7px}.topNav{gap:2px}.navDropdown{margin-left:10px}.navDropdownMenu{border-radius:8px;min-width:172px}.navDropdownMenu a{padding:8px 10px;font-size:13px}main{max-width:1360px;padding:18px 24px 38px}.card{border-radius:8px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 2px rgba(15,23,42,.06)}.card .card{box-shadow:none;background:rgba(248,250,252,.72)}h1,h2,h3{margin:0 0 12px;line-height:1.18}h1{font-size:28px}h2{font-size:22px}h3{font-size:17px}p{margin:7px 0 10px}label{display:block;margin:0 0 4px;font-size:13px;font-weight:750;color:var(--muted)}input,textarea,select,button{width:100%;min-height:38px;padding:8px 10px;margin:4px 0 10px;border-radius:7px;font-size:14px}input[type="date"],input[type="time"]{max-width:190px}input[type="number"]{max-width:160px}select{max-width:360px}textarea{max-width:760px;min-height:78px}input[type="file"]{max-width:420px;padding:7px;background:rgba(248,250,252,.75)}button,.btn-link{width:auto;min-height:38px;min-width:0;padding:8px 13px;margin:4px 6px 6px 0;border-radius:7px;font-size:14px;font-weight:750;box-shadow:none}.btn-link{display:inline-flex}.backButton{min-height:34px;padding:7px 11px;border-radius:7px;font-size:13px}.dark-toggle{min-height:34px;padding:7px 10px;font-size:13px}.grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px 14px;align-items:end}.grid > div{min-width:0}.flash{padding:10px 12px;border-radius:8px;border-left:4px solid #f59e0b}.taskCallButton{min-height:34px!important;padding:7px 11px!important}.photo,img.photo{border-radius:8px}table{font-size:14px}.projectSmallButton,.miniDelete{min-height:32px!important;padding:6px 10px!important;border-radius:6px!important}.projectAdminActions,.confirmRow,.globalPictureMarkActions{gap:8px}.projectAdminActions button,.projectAdminActions .btn-link,.globalPictureMarkActions button{margin:0!important}}
-        @media(max-width:760px){main{padding:12px 12px 92px}header{gap:8px;padding:10px 12px;flex-wrap:nowrap;z-index:1600}header a{margin-left:0}.topNav{display:none}.mobileMenuButton{display:inline-flex!important;width:48px!important;min-height:48px!important;margin:0!important;padding:0!important;border-radius:12px!important;background:#1e293b!important;align-items:center!important;justify-content:center!important;flex-direction:column;gap:5px}.mobileMenuButton span{display:block;width:24px;height:3px;background:white;border-radius:999px}.brandWrap{min-width:0}.brandText{min-width:0}.brandLogo{width:40px;height:40px}.brand{white-space:nowrap}.brandUser{display:block}.mobileMenuPanel{position:fixed;top:60px;left:0;right:0;bottom:0;z-index:1500;background:#0f172a;border-top:1px solid #334155;padding:14px;overflow-y:auto}.mobileMenuPanel.open{display:block}.mobileMenuPanel a,.mobileMenuPanel button{width:100%;min-height:50px;margin:5px 0;border-radius:12px;justify-content:center}.mobileMenuPanel a{display:flex;align-items:center;background:#1e293b;color:white;text-decoration:none;font-weight:800;padding:12px}.mobileMenuGroup{margin:5px 0;border:1px solid #334155;border-radius:12px;background:#111827;overflow:hidden}.mobileMenuGroup summary{display:flex;align-items:center;justify-content:center;min-height:50px;padding:12px;color:white;font-weight:900;cursor:pointer}.mobileMenuGroup a{border-radius:0!important;margin:0!important;border-top:1px solid #334155;background:#1e293b}.mobileMenuPanel .dark-toggle{margin:5px 0!important;background:#334155!important}body.mobile-menu-open{overflow:hidden}body.mobile-menu-open main,body.mobile-menu-open .bottom-nav{display:none!important}.desktop-only{display:none!important}.card{padding:16px;border-radius:16px}.grid{grid-template-columns:1fr;gap:12px}button,.btn-link{width:100%;min-height:58px;font-size:17px}input,textarea,select{min-height:54px;font-size:17px}.backButton{width:100%;min-height:48px}.bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#0f172a;padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:200;gap:8px;box-shadow:0 -6px 18px rgba(0,0,0,.25)}.bottom-nav a{flex:1;color:white;text-decoration:none;text-align:center;padding:10px 6px;border-radius:12px;background:#1e293b;font-weight:800;font-size:13px}}
+        body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:var(--text);
+             padding-bottom:env(safe-area-inset-bottom);line-height:1.5;
+             background-color:#f3eefb;
+             background-image:
+                url("{{ url_for('static', filename='bg-pattern.svg') }}"),
+                radial-gradient(900px 520px at 50% -60px, rgba(255,255,255,.75), rgba(255,255,255,0) 65%),
+                linear-gradient(170deg, #f8f4fd 0%, #ece3f8 55%, #f4eefb 100%);
+             background-repeat:repeat, no-repeat, no-repeat;
+             background-attachment:fixed, fixed, fixed;
+             background-size:340px 340px, cover, cover}
+        header{background:linear-gradient(135deg,#b9a3dd,#7c3aed);color:#fff;padding:16px 18px;
+               padding-top:calc(16px + env(safe-area-inset-top));
+               padding-left:calc(18px + env(safe-area-inset-left));
+               padding-right:calc(18px + env(safe-area-inset-right));
+               border-bottom:3px solid var(--accent);
+               display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+        header .brand{font-weight:900;font-size:20px;letter-spacing:.3px;text-decoration:none;color:#fff;display:flex;align-items:center;gap:10px}
+        header .brand img{width:30px;height:30px;border-radius:8px}
+        header nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+        header nav a{color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:8px 11px;border-radius:10px}
+        .navMobileOnly{display:none}
+        @media(max-width:640px){.navDesktopOnly{display:none}.navMobileOnly{display:inline}}
+        header nav a:hover{background:rgba(255,255,255,.16)}
+        main{max-width:760px;margin:0 auto;padding:18px 16px 40px}
+        .card{background:var(--card);border-radius:var(--radius);padding:20px;margin:0 0 16px;
+              box-shadow:0 6px 22px rgba(15,118,110,.08)}
+        h1{font-size:26px;margin:0 0 12px}h2{font-size:22px;margin:0 0 12px}h3{font-size:18px;margin:0 0 10px}
+        p{margin:8px 0}.muted{color:var(--muted)}
+        label{display:block;font-weight:700;font-size:14px;color:#334155;margin:14px 0 6px}
+        input,textarea,select{width:100%;padding:13px;border:1px solid var(--border);border-radius:12px;
+              font-size:16px;background:#fff;color:var(--text)}
+        textarea{min-height:90px;resize:vertical}
+        .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        @media(max-width:560px){.row2{grid-template-columns:1fr}}
+        .checkbox{display:flex;gap:10px;align-items:flex-start;margin:12px 0}
+        .checkbox input{width:auto;margin-top:3px}
+        button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;
+              background:var(--brand);color:#fff;font-weight:800;font-size:16px;padding:14px 20px;cursor:pointer;
+              text-decoration:none;margin-top:14px}
+        button:hover,.btn:hover{background:var(--brand-dark)}
+        .btn-ghost{background:#f1e8ff;color:var(--brand-dark)}
+        .btn-block{width:100%}
+        .flash{background:#f3e9ff;border:1px solid #e2cffb;color:#5b21b6;border-radius:12px;padding:12px 14px;margin:0 0 14px;font-weight:600}
+        .pill{display:inline-block;background:#f1e8ff;color:var(--brand-dark);font-weight:700;font-size:12px;padding:5px 11px;border-radius:999px}
+        table{width:100%;border-collapse:collapse}
+        a{color:var(--brand-dark)}
     </style>
-    <link rel="stylesheet" href="{{ url_for('static', filename='pro_interface_test.css') }}">
-    {% block extra_head %}{% endblock %}
 </head>
-<body class="proTestTheme">
-{% set live_unread_count = unread_notification_count() if session.get("user_id") else 0 %}
-{% set app_logo = get_app_setting("company_logo") %}
-<header>
-    <div class="brandWrap">
-        {% if app_logo %}<img class="brandLogo" src="{{ url_for('storage_file', storage_path=app_logo) }}" alt="Business Logo">{% endif %}
-        <div class="brandText">
-            <div class="brand">ProjectONus</div>
-            {% if session.get("user_id") %}<div class="brandUser">{{ session.get("name") }}</div>{% endif %}
+<body>
+    <header>
+        <a class="brand" href="{{ url_for('index') }}">
+            <img src="{{ url_for('static', filename='icon-192.png') }}" alt="">{{ app_name }}
+        </a>
+        <nav>
+            {% if session_role == 'admin' %}
+                <a href="{{ url_for('admin_dashboard') }}">Clients</a>
+                <a href="{{ url_for('admin_promotions') }}">Promotions</a>
+                <a class="navDesktopOnly" href="{{ url_for('admin_card') }}">Edit Card</a>
+                <a class="navMobileOnly" href="{{ url_for('card') }}">Card</a>
+                <a href="{{ url_for('logout') }}">Log out</a>
+            {% elif session_role == 'client' %}
+                <a href="{{ url_for('home') }}">Home</a>
+                <a href="{{ url_for('intake') }}">My Form</a>
+                <a href="{{ url_for('logout') }}">Log out</a>
+            {% endif %}
+        </nav>
+    </header>
+    <main>
+        {% with messages = get_flashed_messages() %}
+            {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <div id="installBanner" class="installBanner" role="dialog" aria-label="Install MeTime">
+        <img src="{{ url_for('static', filename='icon-192.png') }}" alt="" class="installIcon">
+        <div class="installBody">
+            <strong>Install MeTime</strong>
+            <span id="installText">Add it to your home screen for the full app experience.</span>
+            <span id="iosHint" style="display:none">Tap the Share button <span style="font-size:17px">&#x2191;&#xFE0E;</span> at the bottom of Safari, then choose <b>“Add to Home Screen”.</b></span>
         </div>
+        <button type="button" id="installBtn" class="installBtn">Install</button>
+        <button type="button" id="installDismiss" class="installDismiss" aria-label="Dismiss">&times;</button>
     </div>
-    {% if session.get("user_id") %}
-    <button type="button" class="mobileMenuButton" id="mobileMenuButton" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenuPanel">
-        <span></span><span></span><span></span>
-    </button>
-    {% endif %}
-    <div class="topNav">
-        {% if session.get("user_id") %}
-            <span class="desktop-only">{{ session.get("name") }}</span>
-            <a href="{{ url_for('index') }}">Home</a>
-            <a href="{{ url_for('index') }}#projects">Projects</a>
-            {% if is_main_admin() %}
-                <div class="navDropdown">
-                    <div class="navDropdownButton" tabindex="0">Tasks</div>
-                    <div class="navDropdownMenu">
-                        <a href="{{ url_for('create_global_task') }}">Create a Task</a>
-                        <a href="{{ url_for('my_tasks', mode='search') }}">Search Task</a>
-                    </div>
-                </div>
-            {% else %}
-                <a href="{{ url_for('today_tasks') }}">Tasks</a>
-            {% endif %}
-            {% if is_main_admin() or can_view_inventory() %}<a href="{{ url_for('inventory') }}">Inventory</a>{% endif %}
-            {% if is_main_admin() %}<a href="{{ url_for('parts_catalog') }}">Items & Catalog</a>{% endif %}
-            {% if not is_main_admin() %}
-                <a href="{{ url_for('my_time_report') }}">Time Report</a>
-            {% endif %}
-            <a href="{{ url_for('notifications') }}" title="Notifications" data-notification-link>Notifications <span data-notification-badge style="background:#dc2626;color:white;border-radius:999px;padding:2px 6px;font-size:12px;{% if not live_unread_count %}display:none;{% endif %}">{{ live_unread_count }}</span></a>
-            {% if is_main_admin() %}
-                <a href="{{ url_for('users') }}">Users</a>
-                <a href="{{ url_for('suppliers') }}">Suppliers</a>
-                <a href="{{ url_for('dtools_import') }}">D-Tools Import</a>
-                <a href="{{ url_for('settings') }}" title="Settings">Settings</a>
-                <a href="{{ url_for('attendance_report') }}">Time Report</a>
-                <a href="{{ url_for('project_report') }}">Project Report</a>
-                <a href="{{ url_for('team_map') }}">Where Is My Team</a>
-                <a href="{{ url_for('backup') }}">Backup</a>
-            {% endif %}
-            <a href="{{ url_for('company_card') }}" target="_blank" rel="noopener">Contact Card</a>
-            <a href="{{ url_for('privacy') }}">Privacy</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
-            <button type="button" class="dark-toggle" onclick="toggleDarkMode()">Dark</button>
-        {% endif %}
-    </div>
-</header>
-{% if session.get("user_id") %}
-<div class="mobileMenuPanel" id="mobileMenuPanel">
-    {% if not is_main_admin() %}
-        <a href="{{ url_for('mobile_home') }}">Home</a>
-        <a href="{{ url_for('mobile_projects') }}">Projects</a>
-        <a href="{{ url_for('mobile_project_search') }}">Search Projects</a>
-        <a href="{{ url_for('today_tasks') }}">Today's Tasks</a>
-        <a href="{{ url_for('my_tasks', mode='search') }}">Search Task</a>
-        <a href="{{ url_for('my_time_report') }}">Time Report</a>
-        <a href="{{ url_for('mobile_inventory') }}">Inventory</a>
-        <a href="{{ url_for('notifications') }}" data-notification-link>Notifications <span data-notification-inline-count style="{% if not live_unread_count %}display:none;{% endif %}">({{ live_unread_count }})</span></a>
-        <a href="{{ url_for('company_card') }}" target="_blank" rel="noopener">Contact Card</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
-    {% else %}
-        <a href="{{ url_for('index') }}">Home</a>
-        <a href="{{ url_for('index') }}#projects">Projects</a>
-        <details class="mobileMenuGroup">
-            <summary>Tasks</summary>
-            <a href="{{ url_for('create_global_task') }}">Create a Task</a>
-            <a href="{{ url_for('my_tasks', mode='search') }}">Search Task</a>
-        </details>
-        {% if can_view_inventory() %}<a href="{{ url_for('inventory') }}">Inventory</a>{% endif %}
-        <a href="{{ url_for('parts_catalog') }}">Items & Catalog</a>
-        <a href="{{ url_for('notifications') }}" data-notification-link>Notifications <span data-notification-inline-count style="{% if not live_unread_count %}display:none;{% endif %}">({{ live_unread_count }})</span></a>
-        <a href="{{ url_for('users') }}">Users</a>
-        <a href="{{ url_for('suppliers') }}">Suppliers</a>
-        <a href="{{ url_for('dtools_import') }}">D-Tools Import</a>
-        <a href="{{ url_for('settings') }}">Settings</a>
-        <a href="{{ url_for('attendance_report') }}">Time Report</a>
-        <a href="{{ url_for('team_map') }}">Where Is My Team</a>
-        <a href="{{ url_for('backup') }}">Backup</a>
-        <a href="{{ url_for('company_card') }}" target="_blank" rel="noopener">Contact Card</a>
-        <a href="{{ url_for('privacy') }}">Privacy</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
-        <button type="button" class="dark-toggle" onclick="toggleDarkMode()">Dark</button>
-    {% endif %}
-</div>
-{% endif %}
-<main>
-    {% set hide_back_button = request.endpoint in ['today_tasks', 'open_task_workspace', 'assignment_tasks'] and not is_main_admin() %}
-    {% if session.get("user_id") %}
-        {% if not hide_back_button %}<button type="button" class="backButton" onclick="goBackOnePage()">Back</button>{% endif %}
-    {% endif %}
-    {% with messages=get_flashed_messages() %}{% if messages %}{% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}{% endif %}{% endwith %}
-    {% block content %}{% endblock %}
-</main>
-{% set calendar_task_id = request.args.get("calendar_task") %}
-{% if calendar_task_id and session.get("user_id") and not is_main_admin() %}
-<div class="calendarPromptOverlay" id="calendarPromptOverlay">
-    <div class="calendarPrompt">
-        <h3>Add Task to Calendar?</h3>
-        <p>The task was received. Add it to this phone calendar using the be-there date and time?</p>
-        <div class="calendarPromptActions">
-            <a class="btn-link" id="calendarYesBtn" target="_blank" href="{{ url_for('task_calendar_file', task_id=calendar_task_id) }}">Yes, Add to Calendar</a>
-            <button type="button" class="btn-secondary" id="calendarNoBtn">No</button>
-        </div>
-    </div>
-</div>
-<style>
-.calendarPromptOverlay{position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:500;display:flex;align-items:center;justify-content:center;padding:18px}
-.calendarPrompt{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.3);max-width:420px;width:100%;padding:20px}
-.calendarPrompt h3{margin-top:0}.calendarPromptActions{display:grid;gap:10px}
-</style>
-<script>
-(function(){
-    const overlay=document.getElementById("calendarPromptOverlay");
-    function closeCalendarPrompt(){
-        if(overlay) overlay.style.display="none";
-        const url=new URL(window.location.href);
-        url.searchParams.delete("calendar_task");
-        window.history.replaceState({}, "", url.toString());
-    }
-    const noBtn=document.getElementById("calendarNoBtn");
-    const yesBtn=document.getElementById("calendarYesBtn");
-    if(noBtn) noBtn.addEventListener("click", closeCalendarPrompt);
-    if(yesBtn) yesBtn.addEventListener("click", function(){setTimeout(closeCalendarPrompt, 300);});
-})();
-</script>
-{% endif %}
-{% if session.get("user_id") %}
-<div class="liveNotificationToast" id="liveNotificationToast" hidden>
-    <div>
-        <strong id="liveNotificationTitle">New Notification</strong>
-        <p id="liveNotificationMessage"></p>
-    </div>
-    <div class="liveNotificationActions">
-        <a class="btn-link" id="liveNotificationOpen" href="{{ url_for('notifications') }}">Open</a>
-        <button type="button" class="btn-secondary" id="liveNotificationClose">Close</button>
-    </div>
-</div>
-<style>
-.liveNotificationToast{position:fixed;right:18px;bottom:92px;z-index:480;background:var(--card);color:var(--text);border:1px solid var(--border);border-left:6px solid var(--danger);border-radius:14px;box-shadow:0 14px 44px rgba(15,23,42,.24);padding:14px;max-width:380px;width:calc(100% - 36px)}
-.liveNotificationToast[hidden]{display:none}.liveNotificationToast p{margin:6px 0 0}.liveNotificationActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.liveNotificationActions .btn-link,.liveNotificationActions button{min-height:44px;margin:0;padding:9px 12px}
-@media(max-width:760px){.liveNotificationToast{left:12px;right:12px;bottom:92px;width:auto}.liveNotificationActions{grid-template-columns:1fr}}
-</style>
-<script>
-(function(){
-    const pollUrl="{{ url_for('notifications_live') }}";
-    const stateKey="projectonus_last_notification_{{ session.get('user_id') }}";
-    const toast=document.getElementById("liveNotificationToast");
-    const titleEl=document.getElementById("liveNotificationTitle");
-    const messageEl=document.getElementById("liveNotificationMessage");
-    const openEl=document.getElementById("liveNotificationOpen");
-    const closeEl=document.getElementById("liveNotificationClose");
-    let lastSeen=parseInt(localStorage.getItem(stateKey)||"0",10)||0;
-    let lastCount={{ live_unread_count or 0 }};
-    let checking=false;
+    <style>
+        .installBanner{display:none;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));
+            z-index:1000;background:#fff;border:1px solid var(--border);border-radius:16px;padding:12px 14px;
+            box-shadow:0 12px 40px rgba(76,29,149,.22);align-items:center;gap:12px;max-width:520px;margin:0 auto}
+        .installIcon{width:46px;height:46px;border-radius:11px;flex:0 0 auto}
+        .installBody{flex:1;min-width:0;font-size:13px;color:var(--muted);line-height:1.35}
+        .installBody strong{display:block;color:var(--text);font-size:15px;margin-bottom:2px}
+        .installBtn{flex:0 0 auto;background:var(--brand);color:#fff;border:0;border-radius:11px;
+            padding:11px 16px;font-weight:800;font-size:14px;cursor:pointer;margin:0}
+        .installDismiss{flex:0 0 auto;background:transparent;border:0;color:var(--muted);font-size:24px;
+            line-height:1;cursor:pointer;padding:2px 6px;margin:0;min-height:0;width:auto}
+    </style>
+    <script>
+        if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js",{scope:"/"}).catch(()=>{})}
 
-    function setBadges(count){
-        document.querySelectorAll("[data-notification-badge]").forEach(el=>{
-            el.textContent=String(count);
-            el.style.display=count>0?"inline-block":"none";
-        });
-        document.querySelectorAll("[data-notification-inline-count]").forEach(el=>{
-            el.textContent="("+count+")";
-            el.style.display=count>0?"inline":"none";
-        });
-    }
+        (function(){
+            var banner=document.getElementById("installBanner");
+            var installBtn=document.getElementById("installBtn");
+            var iosHint=document.getElementById("iosHint");
+            var installText=document.getElementById("installText");
+            var dismiss=document.getElementById("installDismiss");
+            if(!banner) return;
 
-    function hideToast(){
-        if(toast) toast.hidden=true;
-    }
+            var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+            if(standalone) return;                                  // already installed
+            if(localStorage.getItem("mt_install_dismissed")==="1") return;
 
-    function showToast(latest){
-        if(!toast||!latest)return;
-        const isTask=latest.event_type==="task_assigned";
-        const title=isTask?"New Task Assigned":"New Notification";
-        const parts=[];
-        if(latest.task_title)parts.push(latest.task_title);
-        if(latest.project_name)parts.push(latest.project_name);
-        const message=parts.length?parts.join(" - "):(latest.message||"Open notifications to review it.");
-        if(titleEl)titleEl.textContent=title;
-        if(messageEl)messageEl.textContent=message;
-        if(openEl)openEl.href=latest.url||"{{ url_for('notifications') }}";
-        toast.hidden=false;
-        if(navigator.vibrate)navigator.vibrate([140,70,140]);
-        if("Notification" in window&&Notification.permission==="granted"&&document.hidden){
-            try{new Notification(title,{body:message});}catch(e){}
-        }
-    }
+            var ua = navigator.userAgent || "";
+            var isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+            var deferredPrompt=null;
 
-    async function checkLiveNotifications(){
-        if(checking)return;
-        checking=true;
-        try{
-            const res=await fetch(pollUrl,{cache:"no-store",credentials:"same-origin",headers:{"Accept":"application/json"}});
-            if(!res.ok)return;
-            const data=await res.json();
-            const count=parseInt(data.unread_count||0,10)||0;
-            setBadges(count);
-            const latest=data.latest;
-            if(latest&&latest.id){
-                const latestId=parseInt(latest.id,10)||0;
-                if(latestId>lastSeen||count>lastCount){
-                    showToast(latest);
-                }
-                if(latestId>lastSeen){
-                    lastSeen=latestId;
-                    localStorage.setItem(stateKey,String(latestId));
-                }
-            }
-            lastCount=count;
-        }catch(e){
-        }finally{
-            checking=false;
-        }
-    }
+            function show(){ banner.style.display="flex"; }
+            function hide(){ banner.style.display="none"; }
 
-    if(closeEl)closeEl.addEventListener("click",hideToast);
-    checkLiveNotifications();
-    setInterval(checkLiveNotifications,5000);
-    document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkLiveNotifications();});
-    window.addEventListener("focus",checkLiveNotifications);
-})();
-</script>
-{% endif %}
-{% if session.get("user_id") %}
-<nav class="bottom-nav">
-    {% if not is_main_admin() %}
-        <a href="{{ url_for('mobile_home') }}">Home</a>
-        <a href="{{ url_for('mobile_projects') }}">Projects</a>
-        <a href="{{ url_for('mobile_project_search') }}">Search Projects</a>
-        <a href="{{ url_for('today_tasks') }}">Today's Tasks</a>
-        <a href="{{ url_for('my_tasks', mode='search') }}">Search Task</a>
-        <a href="{{ url_for('my_time_report') }}">Time Report</a>
-        <a href="{{ url_for('mobile_inventory') }}">Inventory</a>
-        <a href="{{ url_for('notifications') }}" data-notification-link>Alerts <span data-notification-inline-count style="{% if not live_unread_count %}display:none;{% endif %}">({{ live_unread_count }})</span></a>
-    {% else %}
-        <a href="{{ url_for('index') }}">Home</a>
-        <a href="{{ url_for('index') }}#projects">Projects</a>
-        <a href="{{ url_for('create_global_task') }}">Create a Task</a>
-        <a href="{{ url_for('my_tasks', mode='search') }}">Tasks</a>
-        {% if can_view_inventory() %}<a href="{{ url_for('inventory') }}">Inventory</a>{% endif %}
-        <a href="{{ url_for('notifications') }}" data-notification-link>Alerts <span data-notification-inline-count style="{% if not live_unread_count %}display:none;{% endif %}">({{ live_unread_count }})</span></a>
-        <a href="{{ url_for('new_project') }}">New</a>
-        <a href="{{ url_for('team_map') }}">Team</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
-    {% endif %}
-</nav>
-{% endif %}
-<script>
-function goBackOnePage(){if(window.history.length>1){window.history.back()}else{window.location.href="{{ url_for('index') }}"}}
-function applyDarkMode(){if(localStorage.getItem("projectonus_dark")==="1")document.body.classList.add("dark")}
-function toggleDarkMode(){document.body.classList.toggle("dark");localStorage.setItem("projectonus_dark",document.body.classList.contains("dark")?"1":"0")}
-applyDarkMode();
-const mobileMenuButton=document.getElementById("mobileMenuButton");
-const mobileMenuPanel=document.getElementById("mobileMenuPanel");
-function closeMobileMenu(){
-    if(!mobileMenuPanel||!mobileMenuButton)return;
-    mobileMenuPanel.classList.remove("open");
-    document.body.classList.remove("mobile-menu-open");
-    mobileMenuButton.setAttribute("aria-expanded","false");
-}
-if(mobileMenuButton&&mobileMenuPanel){
-    mobileMenuButton.addEventListener("click",event=>{
-        event.stopPropagation();
-        const isOpen=mobileMenuPanel.classList.toggle("open");
-        document.body.classList.toggle("mobile-menu-open",isOpen);
-        mobileMenuButton.setAttribute("aria-expanded",isOpen?"true":"false");
-    });
-    mobileMenuPanel.querySelectorAll("a").forEach(link=>link.addEventListener("click",closeMobileMenu));
-    document.addEventListener("click",event=>{
-        if(!mobileMenuPanel.classList.contains("open"))return;
-        if(mobileMenuPanel.contains(event.target)||mobileMenuButton.contains(event.target))return;
-        closeMobileMenu();
-    });
-    document.addEventListener("keydown",event=>{if(event.key==="Escape")closeMobileMenu();});
-}
-if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js",{scope:"/"}).catch(()=>{})}
-
-(function(){
-    const isMobile=/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||"");
-    if(!isMobile||!document.body)return;
-    const permissionKey="projectonus_mobile_permissions_v3";
-    const modalId="projectonusPermissionPrompt";
-
-    function showPermissionPrompt(){
-        if(localStorage.getItem(permissionKey)==="done")return;
-        const modal=document.getElementById(modalId);
-        if(modal)modal.hidden=false;
-    }
-
-    function stopTracks(stream){
-        if(stream&&stream.getTracks)stream.getTracks().forEach(track=>track.stop());
-    }
-
-    async function requestProjectONusPermissions(){
-        const status=document.getElementById("projectonusPermissionStatus");
-        if(status)status.textContent="Requesting phone permissions...";
-        const results=[];
-        if(navigator.geolocation){
-            await new Promise(resolve=>{
-                navigator.geolocation.getCurrentPosition(
-                    ()=>{results.push("Location allowed");resolve();},
-                    ()=>{results.push("Location not allowed yet");resolve();},
-                    {enableHighAccuracy:true,timeout:9000,maximumAge:0}
-                );
+            // Android / Chrome / Edge: capture the native install prompt
+            window.addEventListener("beforeinstallprompt", function(e){
+                e.preventDefault();
+                deferredPrompt=e;
+                iosHint.style.display="none";
+                installText.style.display="block";
+                installBtn.style.display="inline-flex";
+                show();
             });
-        }
-        if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
-            try{
-                const camera=await navigator.mediaDevices.getUserMedia({video:true});
-                stopTracks(camera);
-                results.push("Camera allowed");
-            }catch(e){results.push("Camera not allowed yet");}
-            try{
-                const mic=await navigator.mediaDevices.getUserMedia({audio:true});
-                stopTracks(mic);
-                results.push("Microphone allowed");
-            }catch(e){results.push("Microphone not allowed yet");}
-        }
-        if(navigator.storage&&navigator.storage.persist){
-            try{await navigator.storage.persist();}catch(e){}
-        }
-        localStorage.setItem(permissionKey,"done");
-        if(status)status.textContent=results.join(" • ")||"Permissions saved.";
-        if(status)status.textContent=results.length?results.join(" | "):"Permissions saved.";
-        setTimeout(()=>{const modal=document.getElementById(modalId);if(modal)modal.hidden=true;},900);
-    }
-
-    document.addEventListener("click",event=>{
-        const allow=event.target.closest("[data-projectonus-permission-allow]");
-        const later=event.target.closest("[data-projectonus-permission-later]");
-        if(allow){requestProjectONusPermissions();}
-        if(later){
-            localStorage.setItem(permissionKey,"done");
-            const modal=document.getElementById(modalId);
-            if(modal)modal.hidden=true;
-        }
-    });
-    window.addEventListener("load",()=>setTimeout(showPermissionPrompt,500));
-})();
-
-(function(){
-    if(!window.indexedDB||!window.FormData||!window.File)return;
-    const DB_NAME="ProjectONusPendingUploads";
-    const STORE_NAME="uploads";
-    const DB_VERSION=1;
-    let processing=false;
-
-    function openUploadDb(){
-        return new Promise((resolve,reject)=>{
-            const request=indexedDB.open(DB_NAME,DB_VERSION);
-            request.onupgradeneeded=()=>{
-                if(!request.result.objectStoreNames.contains(STORE_NAME)){
-                    request.result.createObjectStore(STORE_NAME,{keyPath:"id"});
-                }
-            };
-            request.onsuccess=()=>resolve(request.result);
-            request.onerror=()=>reject(request.error);
-        });
-    }
-
-    async function storeUpload(entry){
-        const db=await openUploadDb();
-        return new Promise((resolve,reject)=>{
-            const tx=db.transaction(STORE_NAME,"readwrite");
-            tx.objectStore(STORE_NAME).put(entry);
-            tx.oncomplete=()=>resolve();
-            tx.onerror=()=>reject(tx.error);
-        });
-    }
-
-    async function deleteUpload(id){
-        const db=await openUploadDb();
-        return new Promise((resolve,reject)=>{
-            const tx=db.transaction(STORE_NAME,"readwrite");
-            tx.objectStore(STORE_NAME).delete(id);
-            tx.oncomplete=()=>resolve();
-            tx.onerror=()=>reject(tx.error);
-        });
-    }
-
-    async function listUploads(){
-        const db=await openUploadDb();
-        return new Promise((resolve,reject)=>{
-            const tx=db.transaction(STORE_NAME,"readonly");
-            const request=tx.objectStore(STORE_NAME).getAll();
-            request.onsuccess=()=>resolve(request.result||[]);
-            request.onerror=()=>reject(request.error);
-        });
-    }
-
-    function uploadSignalIsWeak(){
-        if(!navigator.onLine)return true;
-        const connection=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
-        if(!connection)return false;
-        const type=String(connection.effectiveType||"").toLowerCase();
-        if(type==="slow-2g"||type==="2g")return true;
-        if(typeof connection.downlink==="number"&&connection.downlink>0&&connection.downlink<0.35)return true;
-        return false;
-    }
-
-    function hasSelectedFile(form){
-        return Array.from(form.querySelectorAll('input[type="file"]')).some(input=>input.files&&input.files.length&&input.files[0].name);
-    }
-
-    function entryFromForm(form){
-        const formData=new FormData(form);
-        const entries=[];
-        for(const [name,value] of formData.entries()){
-            if(value instanceof File){
-                if(!value.name)continue;
-                entries.push({kind:"file",name,file:value,filename:value.name});
-            }else{
-                entries.push({kind:"field",name,value:String(value)});
-            }
-        }
-        return {
-            id:"upload_"+Date.now()+"_"+Math.random().toString(36).slice(2,10),
-            url:new URL(form.getAttribute("action")||window.location.href,window.location.href).toString(),
-            method:(form.getAttribute("method")||"POST").toUpperCase(),
-            createdAt:new Date().toISOString(),
-            pageUrl:window.location.href,
-            entries
-        };
-    }
-
-    function formDataFromEntry(entry){
-        const formData=new FormData();
-        (entry.entries||[]).forEach(item=>{
-            if(item.kind==="file"){
-                formData.append(item.name,item.file,item.filename||item.file.name);
-            }else{
-                formData.append(item.name,item.value||"");
-            }
-        });
-        return formData;
-    }
-
-    function showUploadStatus(message){
-        let status=document.getElementById("projectonusUploadStatus");
-        if(!status)return;
-        status.textContent=message;
-        status.hidden=false;
-        clearTimeout(showUploadStatus.timer);
-        showUploadStatus.timer=setTimeout(()=>{status.hidden=true;},7000);
-    }
-
-    async function queueForm(form, reason){
-        const entry=entryFromForm(form);
-        await storeUpload(entry);
-        registerBackgroundUploadSync();
-        showUploadStatus((reason||"Upload saved locally.")+" It will send automatically when the phone has a better connection.");
-        processUploadQueue();
-    }
-
-    async function registerBackgroundUploadSync(){
-        if(!("serviceWorker" in navigator))return;
-        try{
-            const registration=await navigator.serviceWorker.ready;
-            if("SyncManager" in window&&registration.sync){
-                await registration.sync.register("projectonus-pending-uploads");
-            }
-            if(navigator.serviceWorker.controller){
-                navigator.serviceWorker.controller.postMessage({type:"PROJECTONUS_PROCESS_UPLOADS"});
-            }
-        }catch(e){}
-    }
-
-    async function sendEntry(entry){
-        const response=await fetch(entry.url,{
-            method:entry.method||"POST",
-            body:formDataFromEntry(entry),
-            credentials:"same-origin",
-            redirect:"follow"
-        });
-        if(!response.ok)throw new Error("Upload failed");
-        return response;
-    }
-
-    async function processUploadQueue(){
-        if(processing||uploadSignalIsWeak())return;
-        processing=true;
-        try{
-            const uploads=await listUploads();
-            if(!uploads.length)return;
-            showUploadStatus("Sending "+uploads.length+" pending ProjectONus upload"+(uploads.length===1?"":"s")+"...");
-            let sent=0;
-            for(const entry of uploads){
-                if(uploadSignalIsWeak())break;
-                try{
-                    await sendEntry(entry);
-                    await deleteUpload(entry.id);
-                    sent++;
-                }catch(e){
-                    break;
-                }
-            }
-            if(sent)showUploadStatus(sent+" pending upload"+(sent===1?"":"s")+" sent to the cloud.");
-        }finally{
-            processing=false;
-        }
-    }
-
-    document.addEventListener("submit",async event=>{
-        const form=event.target;
-        if(!form||!form.matches||!form.matches('form[method="post"],form[method="POST"]'))return;
-        if(!form.enctype||!form.enctype.includes("multipart/form-data"))return;
-        if(!hasSelectedFile(form))return;
-        event.preventDefault();
-        const submitter=event.submitter;
-        if(submitter)submitter.disabled=true;
-        try{
-            if(uploadSignalIsWeak()){
-                await queueForm(form,navigator.onLine?"Signal is too weak for upload right now.":"No signal right now.");
-                form.reset();
-                return;
-            }
-            try{
-                const entry=entryFromForm(form);
-                const response=await sendEntry(entry);
-                window.location.href=response.url||form.action||window.location.href;
-            }catch(e){
-                await queueForm(form,"Upload could not reach the cloud right now.");
-                form.reset();
-            }
-        }finally{
-            if(submitter)submitter.disabled=false;
-        }
-    },true);
-
-    window.addEventListener("online",()=>setTimeout(processUploadQueue,1000));
-    document.addEventListener("visibilitychange",()=>{if(!document.hidden)processUploadQueue();});
-    window.addEventListener("focus",processUploadQueue);
-    const connection=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
-    if(connection&&connection.addEventListener)connection.addEventListener("change",processUploadQueue);
-    setInterval(processUploadQueue,30000);
-    window.addEventListener("load",()=>setTimeout(processUploadQueue,1200));
-})();
-</script>
-<style>
-.projectonusPermissionPrompt{position:fixed;inset:0;z-index:1900;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:18px}.projectonusPermissionPrompt[hidden]{display:none}.projectonusPermissionCard{width:min(440px,100%);background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:16px;box-shadow:0 18px 58px rgba(0,0,0,.32);padding:20px}.projectonusPermissionCard h3{margin:0 0 8px}.projectonusPermissionCard p{line-height:1.4}.projectonusPermissionActions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.projectonusPermissionActions button{margin:0}.projectonusPermissionStatus{min-height:20px;margin:10px 0 0;color:var(--muted);font-size:14px}.projectonusUploadStatus{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:1850;max-width:min(520px,calc(100% - 24px));background:#0f172a;color:white;border:1px solid #334155;border-radius:999px;box-shadow:0 12px 32px rgba(0,0,0,.28);padding:12px 16px;text-align:center;font-weight:800}.projectonusUploadStatus[hidden]{display:none}
-.mobileMediaPicker{margin:12px 0}.mobileMediaNativeInputs{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.mobileMediaCommentLabel{margin-top:10px}.mobileMediaPicker textarea{border-radius:18px;min-height:74px}.mobileMediaBar{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:999px;background:var(--card);box-shadow:0 8px 22px rgba(15,23,42,.12);max-width:360px;margin:10px 0 0 auto}.mobileMediaIconButton{width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important;border-radius:50%!important;padding:0!important;margin:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:transparent!important;color:var(--text)!important;border:0!important;box-shadow:none!important}.mobileMediaIconButton svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}.mobileMediaCameraButton{background:var(--primary)!important;color:#fff!important}.mobileMediaPreview{border:1px solid var(--border);border-radius:12px;padding:10px;margin-top:10px;background:rgba(14,165,233,.07)}.mobileMediaPreviewBody{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:center}.mobileMediaPreview p{margin:2px 0 0;word-break:break-word}.mobileMediaThumb{width:64px;height:64px;border-radius:10px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#334155;font-weight:900}.mobileMediaThumb img{width:100%;height:100%;object-fit:cover}.mobileMediaThumb audio{width:58px}.mobileMediaPreviewSave{width:auto!important;min-width:92px!important;margin:10px 0 0 auto!important;display:flex!important}.attachmentCommentEditor{margin-top:8px}.attachmentCommentEditor summary{font-weight:800;cursor:pointer}.attachmentCommentEditor form{margin-top:8px}.globalPictureMarkActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.globalPictureMarkActions button{margin:0!important;width:auto!important}.globalPictureMarkActions #globalPictureMarkSave{margin-left:auto!important}
-#globalPictureMarkModal{display:none;position:fixed;inset:0;z-index:1700;background:rgba(15,23,42,.94);padding:12px}
-#globalPictureMarkCanvas{width:100%;max-height:72vh;background:white;touch-action:none;border-radius:10px}
-@media(max-width:760px){.projectonusPermissionActions{grid-template-columns:1fr}.projectonusUploadStatus{bottom:104px;border-radius:14px}}
-</style>
-<div id="projectonusPermissionPrompt" class="projectonusPermissionPrompt" hidden>
-    <div class="projectonusPermissionCard">
-        <h3>Allow ProjectONus Access</h3>
-        <p>ProjectONus uses the camera for job pictures, the microphone for audio notes, and location for clock in and clock out. Phone photo/file access is requested by your phone when you attach or upload a file.</p>
-        <div class="projectonusPermissionActions">
-            <button type="button" data-projectonus-permission-allow>Allow Access</button>
-            <button type="button" class="btn-secondary" data-projectonus-permission-later>Later</button>
-        </div>
-        <p class="projectonusPermissionStatus" id="projectonusPermissionStatus"></p>
-    </div>
-</div>
-<div id="projectonusUploadStatus" class="projectonusUploadStatus" hidden></div>
-<div id="globalPictureMarkModal">
-    <canvas id="globalPictureMarkCanvas"></canvas>
-    <div class="globalPictureMarkActions">
-        <button type="button" id="globalPictureMarkSave">Save Picture</button>
-        <button type="button" class="btn-secondary" id="globalPictureMarkClear">Clear Drawing</button>
-        <button type="button" class="btn-secondary" id="globalPictureMarkUseOriginal">Use Picture Without Drawing</button>
-        <button type="button" class="btn-danger" id="globalPictureMarkCancel">Cancel Picture</button>
-    </div>
-</div>
-<script>
-(function(){
-    if(!window.File||!window.DataTransfer)return;
-
-    function pad2(value){return String(value).padStart(2,"0");}
-    function generatedName(prefix, file){
-        const now=new Date();
-        const ext=(file&&file.name&&file.name.includes("."))?file.name.split(".").pop().toLowerCase():(file&&file.type&&file.type.includes("/")?file.type.split("/").pop().replace("mpeg","mp3"):"dat");
-        return "ProjectONus_"+prefix+"_"+now.getFullYear()+pad2(now.getMonth()+1)+pad2(now.getDate())+"_"+pad2(now.getHours())+pad2(now.getMinutes())+pad2(now.getSeconds())+"_"+Math.random().toString(36).slice(2,8).toUpperCase()+"."+ext;
-    }
-    function renameFile(file,name){
-        if(!file||!name)return file;
-        return new File([file],name,{type:file.type||"application/octet-stream",lastModified:file.lastModified||Date.now()});
-    }
-    function setOneFile(input,file){
-        const dt=new DataTransfer();
-        dt.items.add(file);
-        input.files=dt.files;
-    }
-    function mediaLabel(action){
-        if(action==="camera")return "Picture ready";
-        if(action==="audio")return "Audio ready";
-        return "Attachment ready";
-    }
-    function clearOtherInputs(picker,activeInput){
-        picker.querySelectorAll("[data-media-input]").forEach(input=>{
-            if(input!==activeInput)input.value="";
-        });
-    }
-    function updatePreview(input){
-        const picker=input.closest("[data-media-picker]");
-        const preview=picker&&picker.querySelector("[data-media-preview]");
-        if(!picker||!preview||!input.files||!input.files[0])return;
-        clearOtherInputs(picker,input);
-        const file=input.files[0];
-        const kind=preview.querySelector("[data-media-kind]");
-        const filename=preview.querySelector("[data-media-filename]");
-        const thumb=preview.querySelector("[data-media-thumb]");
-        if(kind)kind.textContent=mediaLabel(input.dataset.mediaInput||"attach");
-        if(filename)filename.textContent=file.name||"Selected file";
-        if(thumb){
-            thumb.innerHTML="";
-            if(file.type&&file.type.startsWith("image/")){
-                const img=document.createElement("img");
-                img.alt="";
-                img.src=URL.createObjectURL(file);
-                img.onload=()=>URL.revokeObjectURL(img.src);
-                thumb.appendChild(img);
-            }else if(file.type&&file.type.startsWith("audio/")){
-                thumb.textContent="AUD";
-            }else{
-                thumb.textContent="FILE";
-            }
-        }
-        preview.hidden=false;
-        const saveButton=picker.querySelector("[data-media-save]");
-        if(saveButton){
-            saveButton.disabled=false;
-            saveButton.textContent=saveButton.dataset.mediaSaveLabel||"Attach";
-        }
-        const comment=picker.querySelector("[data-media-comment]");
-        if(comment&&input.dataset.mediaInput!=="audio")comment.focus();
-    }
-    window.ProjectONusMobileMedia={
-        init(root){
-            (root||document).querySelectorAll("[data-media-input]").forEach(input=>{
-                if(input.dataset.mobileMediaReady==="1")return;
-                input.dataset.mobileMediaReady="1";
-                input.addEventListener("change",()=>{
-                    if(!input.files||!input.files[0])return;
-                    const prefix=input.dataset.generatedPrefix;
-                    if(prefix){
-                        setOneFile(input,renameFile(input.files[0],generatedName(prefix,input.files[0])));
-                    }
-                    updatePreview(input);
-                });
+            installBtn.addEventListener("click", async function(){
+                if(!deferredPrompt) return;
+                deferredPrompt.prompt();
+                try{ await deferredPrompt.userChoice; }catch(e){}
+                deferredPrompt=null;
+                hide();
             });
-        }
-    };
 
-    document.addEventListener("click",event=>{
-        const actionButton=event.target.closest("[data-media-action]");
-        if(actionButton){
-            const picker=actionButton.closest("[data-media-picker]");
-            const input=picker&&picker.querySelector('[data-media-input="'+actionButton.dataset.mediaAction+'"]');
-            if(input)input.click();
-            return;
-        }
-        const saveButton=event.target.closest("[data-media-save]");
-        if(saveButton){
-            const picker=saveButton.closest("[data-media-picker]");
-            const preview=picker&&picker.querySelector("[data-media-preview]");
-            const kind=preview&&preview.querySelector("[data-media-kind]");
-            if(kind)kind.textContent="Ready for the main save button";
-            saveButton.textContent="Attached";
-            saveButton.disabled=true;
-        }
-    });
+            // iOS Safari: no programmatic install — show the Add to Home Screen instructions
+            if(isIOS){
+                installBtn.style.display="none";
+                installText.style.display="none";
+                iosHint.style.display="block";
+                setTimeout(show, 1500);
+            }
 
-    document.addEventListener("change",event=>{
-        const input=event.target.closest&&event.target.closest("[data-media-input]");
-        if(!input||!input.files||!input.files[0])return;
-        if(input.dataset.mobileMediaReady==="1")return;
-        const prefix=input.dataset.generatedPrefix;
-        if(prefix){
-            setOneFile(input,renameFile(input.files[0],generatedName(prefix,input.files[0])));
-        }
-        updatePreview(input);
-    });
-    window.ProjectONusMobileMedia.init(document);
-})();
-
-(function(){
-    const modal=document.getElementById("globalPictureMarkModal");
-    const canvas=document.getElementById("globalPictureMarkCanvas");
-    if(!modal||!canvas||!window.File||!window.DataTransfer)return;
-    const ctx=canvas.getContext("2d");
-    const saveBtn=document.getElementById("globalPictureMarkSave");
-    const clearBtn=document.getElementById("globalPictureMarkClear");
-    const useOriginalBtn=document.getElementById("globalPictureMarkUseOriginal");
-    const cancelBtn=document.getElementById("globalPictureMarkCancel");
-    let activeInput=null;
-    let originalFile=null;
-    let activeFilename="";
-    let imageObjectUrl="";
-    let drawing=false;
-    let lastPoint=null;
-
-    function isMarkableInput(input){
-        return input&&input.matches&&input.matches('input[type="file"][accept*="image"]:not(.annotatablePhoto):not([name="blueprint"]):not([name="company_logo"])');
-    }
-
-    function pad2(value){
-        return String(value).padStart(2,"0");
-    }
-
-    function phoneStyleFilename(){
-        const now=new Date();
-        return "ProjectONus_IMG_"+now.getFullYear()+pad2(now.getMonth()+1)+pad2(now.getDate())+"_"+pad2(now.getHours())+pad2(now.getMinutes())+pad2(now.getSeconds())+".jpg";
-    }
-
-    function jpegFilename(name){
-        const clean=name||phoneStyleFilename();
-        return clean.match(/\.[A-Za-z0-9]+$/)?clean.replace(/\.[A-Za-z0-9]+$/,".jpg"):clean+".jpg";
-    }
-
-    function displayFilename(file,input){
-        const name=file&&file.name?file.name:"";
-        const lower=name.toLowerCase();
-        const generic=["image.jpg","image.jpeg","image.png","photo.jpg","photo.jpeg","photo.png","picture.jpg","picture.jpeg","picture.png","marked_picture.jpg","blob"];
-        if((input&&input.hasAttribute("capture"))||generic.includes(lower))return phoneStyleFilename();
-        return name||phoneStyleFilename();
-    }
-
-    function isHeicFile(file){
-        const type=(file&&file.type?file.type:"").toLowerCase();
-        const name=(file&&file.name?file.name:"").toLowerCase();
-        return type.includes("heic")||type.includes("heif")||name.endsWith(".heic")||name.endsWith(".heif");
-    }
-
-    function canvasPoint(event){
-        const rect=canvas.getBoundingClientRect();
-        const pointer=event.touches?event.touches[0]:event;
-        return {
-            x:(pointer.clientX-rect.left)*(canvas.width/rect.width),
-            y:(pointer.clientY-rect.top)*(canvas.height/rect.height)
-        };
-    }
-
-    function drawMove(event){
-        if(!drawing)return;
-        event.preventDefault();
-        const point=canvasPoint(event);
-        ctx.strokeStyle="#ef4444";
-        ctx.lineWidth=Math.max(6,canvas.width/180);
-        ctx.lineCap="round";
-        ctx.beginPath();
-        ctx.moveTo(lastPoint.x,lastPoint.y);
-        ctx.lineTo(point.x,point.y);
-        ctx.stroke();
-        lastPoint=point;
-    }
-
-    function closeModal(){
-        modal.style.display="none";
-        if(imageObjectUrl){
-            URL.revokeObjectURL(imageObjectUrl);
-            imageObjectUrl="";
-        }
-    }
-
-    function setInputFile(input, blob, filename){
-        const file=new File([blob], filename, {type:"image/jpeg"});
-        const dt=new DataTransfer();
-        dt.items.add(file);
-        input.files=dt.files;
-    }
-
-    function setInputOriginal(){
-        if(!activeInput||!originalFile)return;
-        const dt=new DataTransfer();
-        dt.items.add(originalFile);
-        activeInput.files=dt.files;
-        closeModal();
-    }
-
-    function saveCanvasToInput(){
-        if(!activeInput)return;
-        canvas.toBlob(blob=>{
-            if(blob)setInputFile(activeInput, blob, jpegFilename(activeFilename));
-            closeModal();
-        },"image/jpeg",.86);
-    }
-
-    function loadPicture(file){
-        if(imageObjectUrl){
-            URL.revokeObjectURL(imageObjectUrl);
-            imageObjectUrl="";
-        }
-        const image=new Image();
-        image.onload=function(){
-            const maxSize=1600;
-            const ratio=Math.min(1,maxSize/Math.max(image.width,image.height));
-            canvas.width=Math.max(1,Math.round(image.width*ratio));
-            canvas.height=Math.max(1,Math.round(image.height*ratio));
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.drawImage(image,0,0,canvas.width,canvas.height);
-            modal.style.display="block";
-        };
-        image.onerror=function(){
-            closeModal();
-            alert("This picture type could not be opened for drawing. It will still be attached without marking.");
-        };
-        imageObjectUrl=URL.createObjectURL(file);
-        image.src=imageObjectUrl;
-    }
-
-    document.addEventListener("change",event=>{
-        const input=event.target;
-        if(!isMarkableInput(input))return;
-        if(!input.files||!input.files[0])return;
-        const file=input.files[0];
-        if(!file.type||!file.type.startsWith("image/"))return;
-        if(isHeicFile(file))return;
-        activeInput=input;
-        originalFile=file;
-        activeFilename=displayFilename(file,input);
-        loadPicture(file);
-    });
-
-    ["mousedown","touchstart"].forEach(eventName=>canvas.addEventListener(eventName,event=>{
-        drawing=true;
-        lastPoint=canvasPoint(event);
-        event.preventDefault();
-    },{passive:false}));
-    ["mousemove","touchmove"].forEach(eventName=>canvas.addEventListener(eventName,drawMove,{passive:false}));
-    ["mouseup","mouseleave","touchend"].forEach(eventName=>canvas.addEventListener(eventName,()=>{drawing=false;}));
-    if(saveBtn)saveBtn.addEventListener("click",saveCanvasToInput);
-    if(clearBtn)clearBtn.addEventListener("click",()=>{if(originalFile)loadPicture(originalFile);});
-    if(useOriginalBtn)useOriginalBtn.addEventListener("click",setInputOriginal);
-    if(cancelBtn)cancelBtn.addEventListener("click",()=>{
-        if(activeInput)activeInput.value="";
-        closeModal();
-    });
-})();
-</script>
-{% if session.get("user_id") and not is_main_admin() %}
-<script>
-(function(){
-    if(!navigator.geolocation)return;
-    let watchId=null;
-    let lastSent=0;
-    let intervalMs=60000;
-
-    function timezoneName(){
-        try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"";}catch(e){return "";}
-    }
-
-    function stopTracking(){
-        if(watchId!==null){
-            navigator.geolocation.clearWatch(watchId);
-            watchId=null;
-        }
-    }
-
-    function sendPosition(pos){
-        const now=Date.now();
-        if(now-lastSent<intervalMs)return;
-        lastSent=now;
-        fetch("{{ url_for('mobile_location_ping') }}",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({
-                latitude:pos.coords.latitude,
-                longitude:pos.coords.longitude,
-                accuracy:pos.coords.accuracy,
-                event_timezone:timezoneName()
-            })
-        }).then(r=>r.json()).then(data=>{
-            if(data && data.active===false)stopTracking();
-        }).catch(()=>{});
-    }
-
-    function startTracking(){
-        if(watchId!==null)return;
-        watchId=navigator.geolocation.watchPosition(
-            sendPosition,
-            ()=>{},
-            {enableHighAccuracy:true,timeout:20000,maximumAge:30000}
-        );
-    }
-
-    async function refreshClockStatus(){
-        try{
-            const res=await fetch("{{ url_for('mobile_location_status') }}",{cache:"no-store"});
-            const data=await res.json();
-            intervalMs=data.interval_ms||60000;
-            if(data.active)startTracking();
-            else stopTracking();
-        }catch(e){}
-    }
-
-    refreshClockStatus();
-    setInterval(refreshClockStatus,60000);
-    document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshClockStatus();});
-})();
-</script>
-{% endif %}
-<div style="text-align:center;padding:20px;color:#64748b;font-size:13px">
-    <a href="{{ url_for('privacy') }}" style="color:inherit;text-decoration:none">Privacy Policy</a>
-</div>
-
-<div id="imgLightbox" class="imgLightbox" hidden>
-    <button type="button" class="imgLightboxClose" aria-label="Close">&times;</button>
-    <img id="imgLightboxImg" class="imgLightboxImg" src="" alt="">
-</div>
-<style>
-.photo,img.photo,.imgZoomable{cursor:zoom-in}
-.imgLightbox{position:fixed;inset:0;z-index:5000;background:rgba(8,12,20,.92);display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
-.imgLightbox[hidden]{display:none!important}
-.imgLightboxImg{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
-.imgLightboxClose{position:fixed;top:14px;right:18px;width:48px;height:48px;min-height:0;margin:0;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:30px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.imgLightboxClose:hover{background:rgba(255,255,255,.28)}
-@media print{.imgLightbox{display:none!important}}
-</style>
-<script>
-(function(){
-    const box=document.getElementById("imgLightbox");
-    const boxImg=document.getElementById("imgLightboxImg");
-    if(!box||!boxImg) return;
-    function isZoomable(img){
-        if(!img || img.tagName!=="IMG") return false;
-        if(img.closest(".imgLightbox")) return false;
-        // Content photos opt in via the "photo" / "imgZoomable" class.
-        if(img.classList.contains("photo")||img.classList.contains("imgZoomable")) return true;
-        // Also allow any reasonably large stored image (skip logos, icons, avatars).
-        if(img.classList.contains("brandLogo")||img.classList.contains("noZoom")) return false;
-        const src=img.getAttribute("src")||"";
-        if(src.indexOf("/storage_file/")!==-1 && (img.naturalWidth>140 || img.width>140)) return true;
-        return false;
-    }
-    function open(src){
-        boxImg.src=src;
-        box.hidden=false;
-        document.body.style.overflow="hidden";
-    }
-    function close(){
-        box.hidden=true;
-        boxImg.src="";
-        document.body.style.overflow="";
-    }
-    document.addEventListener("click",function(e){
-        const img=e.target.closest("img");
-        if(img && isZoomable(img)){
-            // Don't hijack images that are links or buttons.
-            if(img.closest("a,button")) return;
-            e.preventDefault();
-            open(img.currentSrc||img.src);
-        }
-    });
-    box.addEventListener("click",close);
-    document.querySelector(".imgLightboxClose").addEventListener("click",function(e){e.stopPropagation();close();});
-    document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!box.hidden)close();});
-})();
-</script>
+            dismiss.addEventListener("click", function(){
+                hide();
+                try{ localStorage.setItem("mt_install_dismissed","1"); }catch(e){}
+            });
+            window.addEventListener("appinstalled", hide);
+        })();
+    </script>
 </body>
 </html>
