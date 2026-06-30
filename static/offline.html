@@ -3,20 +3,24 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Offline - MeTime</title>
+    <title>Offline - ProjectONus</title>
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
     <style>
         body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
-             font-family:Arial,sans-serif;background:#7c3aed;color:#fff;text-align:center;padding:24px}
-        img{width:88px;height:88px;border-radius:20px;margin-bottom:16px}
-        h1{margin:0 0 8px}p{color:#ede9fe;max-width:320px}
-        button{margin-top:18px;background:#fff;color:#6d28d9;border:0;border-radius:12px;padding:14px 22px;font-weight:800;font-size:16px}
+             font-family:Arial,sans-serif;background:#0b1120;color:#e5e7eb;text-align:center;padding:24px}
+        .box{max-width:360px}
+        img{width:96px;height:96px;border-radius:22px;margin-bottom:18px}
+        h1{font-size:22px;margin:0 0 10px}
+        p{color:#94a3b8;line-height:1.5;margin:0 0 22px}
+        button{background:#2563eb;color:#fff;border:0;border-radius:12px;padding:14px 22px;
+               font-size:16px;font-weight:800;cursor:pointer}
     </style>
 </head>
 <body>
-    <div>
-        <img src="/static/icon-192.png" alt="MeTime">
+    <div class="box">
+        <img src="/static/icon-192.png" alt="ProjectONus">
         <h1>You're offline</h1>
-        <p>Please reconnect to the internet to use MeTime.</p>
+        <p>ProjectONus needs an internet connection to load this page. Your phone will keep any photos or notes you queued and send them when you're back online.</p>
         <button onclick="location.reload()">Try Again</button>
     </div>
 </body>
