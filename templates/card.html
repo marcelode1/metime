@@ -3,186 +3,153 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>{{ info.company_contact_name or info.company_name or "Contact" }}</title>
-    <meta name="theme-color" content="#0f172a">
+    <title>{{ d.card_contact_name or d.card_business_name or "Contact" }}</title>
+    <meta name="theme-color" content="#7c3aed">
     <link rel="icon" type="image/png" href="/static/icon-192.png">
     <style>
         *{box-sizing:border-box}
-        body{margin:0;background:#e9eef5;color:#0f172a;font-family:Arial,Helvetica,sans-serif;
-             min-height:100vh;display:flex;justify-content:center;padding:14px}
+        body{margin:0;background:#efe9f8;color:#2a2140;font-family:-apple-system,Segoe UI,Arial,sans-serif;
+             min-height:100vh;display:flex;justify-content:center;padding:14px;
+             padding-top:calc(14px + env(safe-area-inset-top))}
         .wrap{width:100%;max-width:440px;align-self:flex-start}
-        .topCard{background:#fff;border-radius:24px;box-shadow:0 14px 40px rgba(15,23,42,.12);overflow:hidden}
-        .banner{height:140px;background:linear-gradient(135deg,#3b82f6,#1e40af)}
+        .backBtn{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#6d28d9;text-decoration:none;
+                 font-weight:800;font-size:15px;padding:10px 16px;border-radius:14px;margin:0 0 12px;
+                 box-shadow:0 4px 14px rgba(76,29,149,.1)}
+        .topCard{background:#fff;border-radius:24px;box-shadow:0 14px 40px rgba(76,29,149,.14);overflow:hidden}
+        .banner{height:140px;background:linear-gradient(135deg,#b9a3dd,#7c3aed)}
         .banner img{width:100%;height:100%;object-fit:cover;display:block}
         .avatarWrap{display:flex;justify-content:center;margin-top:-64px}
-        .avatar{width:122px;height:122px;border-radius:50%;border:5px solid #fff;object-fit:cover;
-                background:#fff;box-shadow:0 8px 20px rgba(0,0,0,.18)}
-        .avatarFallback{width:122px;height:122px;border-radius:50%;border:5px solid #fff;background:#2563eb;
-                color:#fff;display:flex;align-items:center;justify-content:center;font-size:50px;font-weight:900;
-                box-shadow:0 8px 20px rgba(0,0,0,.18)}
+        .avatar{width:122px;height:122px;border-radius:50%;border:5px solid #fff;object-fit:cover;background:#fff;
+                box-shadow:0 8px 20px rgba(76,29,149,.2)}
+        .avatarFallback{width:122px;height:122px;border-radius:50%;border:5px solid #fff;background:#c9a24a;color:#fff;
+                display:flex;align-items:center;justify-content:center;font-size:50px;font-weight:900;box-shadow:0 8px 20px rgba(76,29,149,.2)}
         .head{padding:12px 22px 24px;text-align:center}
-        .name{font-size:25px;font-weight:900;margin:0 0 10px;color:#0f172a;line-height:1.15}
-        .infoBlock{color:#64748b;font-size:15px;line-height:1.55;margin:0 0 14px}
-        .infoBlock div{margin:2px 0}
-        .infoBlock .company{color:#334155;font-weight:700}
-        .pill{display:inline-block;background:#f1f5f9;color:#475569;font-weight:700;font-size:13px;
-              padding:7px 14px;border-radius:999px}
+        .name{font-size:25px;font-weight:900;margin:0 0 8px;color:#2a2140;line-height:1.15}
+        .infoBlock{color:#7c708f;font-size:15px;line-height:1.55;margin:0 0 12px}
+        .infoBlock .biz{color:#473a5e;font-weight:700}
+        .pill{display:inline-block;background:#f1e8ff;color:#6d28d9;font-weight:700;font-size:13px;padding:6px 14px;border-radius:999px}
         .actions{display:grid;gap:12px;margin:16px 0 4px}
         .row{display:flex;align-items:center;gap:14px;background:#fff;border-radius:18px;padding:14px 16px;
-             box-shadow:0 4px 14px rgba(15,23,42,.07);text-decoration:none;color:#0f172a}
-        .ico{width:48px;height:48px;flex:0 0 48px;border-radius:50%;display:flex;align-items:center;
-             justify-content:center;font-size:22px;color:#fff;font-weight:800}
+             box-shadow:0 4px 14px rgba(76,29,149,.08);text-decoration:none;color:#2a2140}
+        .ico{width:48px;height:48px;flex:0 0 48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+             font-size:22px;color:#fff;font-weight:800}
         .ico.email{background:linear-gradient(135deg,#2aa4f4,#1877f2)}
         .ico.call{background:#22c55e}
-        .ico.web{background:#0ea5e9}
+        .ico.web{background:#7c3aed}
         .ico.map{background:#ef4444}
         .ico.ig{background:linear-gradient(45deg,#f9ce34,#ee2a7b,#6228d7)}
         .ico.fb{background:#1877f2}
-        .ico.li{background:#0a66c2}
         .row .t{font-size:17px;font-weight:800;line-height:1.2}
-        .row .v{display:block;color:#64748b;font-weight:600;font-size:14px;margin-top:2px;
+        .row .v{display:block;color:#7c708f;font-weight:600;font-size:14px;margin-top:2px;
                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}
-        .save,.share{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
-              border:0;border-radius:16px;font-weight:800;text-decoration:none;cursor:pointer}
+        .save,.share{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:16px;
+             font-weight:800;text-decoration:none;cursor:pointer}
         .save{margin-top:8px;padding:17px;background:#16a34a;color:#fff;font-size:17px}
-        .share{margin-top:11px;padding:15px;background:#0f172a;color:#fff;font-size:15px}
-        .smsCard{background:#fff;border-radius:22px;box-shadow:0 10px 30px rgba(15,23,42,.1);margin-top:14px;padding:20px}
+        .share{margin-top:11px;padding:15px;background:#6d28d9;color:#fff;font-size:15px}
+        .smsCard{background:#fff;border-radius:22px;box-shadow:0 10px 30px rgba(76,29,149,.1);margin-top:14px;padding:20px}
         .smsCard h3{margin:0 0 4px;font-size:18px}
-        .smsHint{color:#64748b;font-size:13px;margin:0 0 12px}
-        .smsCard input{width:100%;padding:14px;border:1px solid #cbd5e1;border-radius:12px;font-size:16px;margin:0 0 10px}
-        .smsCard button{width:100%;padding:15px;border:0;border-radius:14px;background:#2563eb;color:#fff;
-              font-size:16px;font-weight:800;cursor:pointer}
-        .smsCard button:disabled{opacity:.6}
+        .smsCard p{color:#7c708f;font-size:13px;margin:0 0 12px}
+        .smsCard input{width:100%;padding:14px;border:1px solid #e7defa;border-radius:12px;font-size:16px;margin:0 0 10px}
+        .smsCard button{width:100%;padding:15px;border:0;border-radius:14px;background:#7c3aed;color:#fff;font-size:16px;font-weight:800;cursor:pointer}
         .smsStatus{font-size:14px;margin:10px 0 0;text-align:center;min-height:18px}
-        .qrCard{background:#fff;border-radius:24px;box-shadow:0 14px 40px rgba(15,23,42,.12);
-                margin-top:14px;padding:22px;text-align:center}
+        .qrCard{background:#fff;border-radius:24px;box-shadow:0 14px 40px rgba(76,29,149,.12);margin-top:14px;padding:22px;text-align:center}
         .qrCard svg{width:200px;height:200px}
-        .qrCard p{color:#64748b;font-size:14px;margin:10px 0 0}
-        .foot{text-align:center;color:#94a3b8;font-size:12px;padding:16px}
+        .qrCard p{color:#7c708f;font-size:14px;margin:10px 0 0}
+        .foot{text-align:center;color:#a99fbe;font-size:12px;padding:16px}
     </style>
 </head>
 <body>
     <div class="wrap">
+        <a class="backBtn" href="{{ back_url or '/' }}">&larr; Back to Home</a>
         <div class="topCard">
-            <div class="banner">{% if banner_src %}<img src="{{ banner_src }}" alt="">{% endif %}</div>
+            <div class="banner">{% if d.banner %}<img src="{{ d.banner }}" alt="">{% endif %}</div>
             <div class="avatarWrap">
-                {% if photo_src %}
-                    <img class="avatar" src="{{ photo_src }}" alt="">
+                {% if d.photo %}
+                    <img class="avatar" src="{{ d.photo }}" alt="">
                 {% else %}
-                    <span class="avatarFallback">{{ (info.company_contact_name or info.company_name or 'P')[:1]|upper }}</span>
+                    <span class="avatarFallback">{{ (d.card_contact_name or d.card_business_name or 'M')[:1]|upper }}</span>
                 {% endif %}
             </div>
             <div class="head">
-                <h1 class="name">{{ info.company_contact_name or info.company_name }}</h1>
+                <h1 class="name">{{ d.card_contact_name or d.card_business_name }}</h1>
                 <div class="infoBlock">
-                    {% if info.company_name %}<div class="company">{{ info.company_name }}</div>{% endif %}
-                    {% if info.card_title %}<div>{{ info.card_title }}</div>{% endif %}
-                    {% if info.company_address %}<div>{{ info.company_address }}</div>{% endif %}
-                    {% if info.card_tagline %}<div>{{ info.card_tagline }}</div>{% endif %}
+                    {% if d.card_business_name %}<div class="biz">{{ d.card_business_name }}</div>{% endif %}
+                    {% if d.card_title %}<div>{{ d.card_title }}</div>{% endif %}
+                    {% if d.card_license %}<div>License # {{ d.card_license }}</div>{% endif %}
+                    {% if d.card_address %}<div>{{ d.card_address }}</div>{% endif %}
+                    {% if d.card_tagline %}<div>{{ d.card_tagline }}</div>{% endif %}
                 </div>
-                <span class="pill">Business</span>
+                <span class="pill">Therapeutic Massage</span>
             </div>
         </div>
 
         <div class="actions">
-            {% if info.company_email %}
-            <a class="row" href="mailto:{{ info.company_email }}">
-                <span class="ico email">&#9993;</span>
-                <span><span class="t">Email</span><span class="v">{{ info.company_email }}</span></span>
-            </a>
+            {% if d.card_email %}
+            <a class="row" href="mailto:{{ d.card_email }}"><span class="ico email">&#9993;</span>
+                <span><span class="t">Email</span><span class="v">{{ d.card_email }}</span></span></a>
             {% endif %}
-            {% if info.company_phone %}
-            <a class="row" href="tel:{{ info.company_phone }}">
-                <span class="ico call">&#128222;</span>
-                <span><span class="t">Call</span><span class="v">{{ info.company_phone }}</span></span>
-            </a>
-            {% endif %}
-            {% if info.company_mobile %}
-            <a class="row" href="tel:{{ info.company_mobile }}">
-                <span class="ico call">&#128241;</span>
-                <span><span class="t">Mobile</span><span class="v">{{ info.company_mobile }}</span></span>
-            </a>
+            {% if d.card_phone %}
+            <a class="row" href="tel:{{ d.card_phone }}"><span class="ico call">&#128222;</span>
+                <span><span class="t">Call</span><span class="v">{{ d.card_phone }}</span></span></a>
             {% endif %}
             {% if website_url %}
-            <a class="row" href="{{ website_url }}" target="_blank" rel="noopener">
-                <span class="ico web">&#127760;</span>
-                <span><span class="t">Website</span><span class="v">{{ info.company_website }}</span></span>
-            </a>
+            <a class="row" href="{{ website_url }}" target="_blank" rel="noopener"><span class="ico web">&#127760;</span>
+                <span><span class="t">Website</span><span class="v">{{ d.card_website }}</span></span></a>
             {% endif %}
             {% if instagram_url %}
-            <a class="row" href="{{ instagram_url }}" target="_blank" rel="noopener">
-                <span class="ico ig">&#128247;</span>
-                <span><span class="t">Instagram</span><span class="v">{{ info.card_instagram }}</span></span>
-            </a>
+            <a class="row" href="{{ instagram_url }}" target="_blank" rel="noopener"><span class="ico ig">&#128247;</span>
+                <span><span class="t">Instagram</span><span class="v">{{ d.card_instagram }}</span></span></a>
             {% endif %}
             {% if facebook_url %}
-            <a class="row" href="{{ facebook_url }}" target="_blank" rel="noopener">
-                <span class="ico fb">f</span>
-                <span><span class="t">Facebook</span><span class="v">{{ info.card_facebook }}</span></span>
-            </a>
+            <a class="row" href="{{ facebook_url }}" target="_blank" rel="noopener"><span class="ico fb">f</span>
+                <span><span class="t">Facebook</span><span class="v">{{ d.card_facebook }}</span></span></a>
             {% endif %}
-            {% if linkedin_url %}
-            <a class="row" href="{{ linkedin_url }}" target="_blank" rel="noopener">
-                <span class="ico li">in</span>
-                <span><span class="t">LinkedIn</span><span class="v">{{ info.card_linkedin }}</span></span>
-            </a>
-            {% endif %}
-            {% if info.company_address %}
-            <a class="row" href="https://www.google.com/maps/search/?api=1&query={{ info.company_address|urlencode }}" target="_blank" rel="noopener">
+            {% if d.card_address %}
+            <a class="row" href="https://www.google.com/maps/search/?api=1&query={{ d.card_address|urlencode }}" target="_blank" rel="noopener">
                 <span class="ico map">&#128205;</span>
-                <span><span class="t">Address</span><span class="v">{{ info.company_address }}</span></span>
-            </a>
+                <span><span class="t">Address</span><span class="v">{{ d.card_address }}</span></span></a>
             {% endif %}
         </div>
 
-        <a class="save" href="{{ url_for('company_card_vcf') }}">&#128229; Save to Contacts</a>
+        <a class="save" href="{{ url_for('card_vcf') }}">&#128229; Save to Contacts</a>
         <button class="share" type="button" id="shareBtn">&#128279; Share this card</button>
 
-        {% if logged_in %}
+        {% if is_admin %}
         <div class="smsCard">
-            <h3>Send Contact Card</h3>
-            <p class="smsHint">Enter the customer's number and tap Send &mdash; your phone's Messages app opens with the card link ready to send.</p>
-            <input type="tel" id="smsPhone" inputmode="tel" placeholder="Customer phone number">
+            <h3>Send Card by Text</h3>
+            <p>Enter a number and tap Send &mdash; your Messages app opens with this card link ready to send.</p>
+            <input type="tel" id="smsPhone" inputmode="tel" placeholder="Phone number">
             <button type="button" id="smsBtn">Send by Text</button>
             <p class="smsStatus" id="smsStatus"></p>
         </div>
         {% endif %}
 
         {% if qr_svg %}
-        <div class="qrCard">
-            {{ qr_svg|safe }}
-            <p>Scan to open this card</p>
-        </div>
+        <div class="qrCard">{{ qr_svg|safe }}<p>Scan to open this card</p></div>
         {% endif %}
 
-        <div class="foot">Powered by ProjectONus</div>
+        <div class="foot">Powered by {{ d.card_business_name }}</div>
     </div>
 
     <script>
     document.getElementById("shareBtn").addEventListener("click", async function(){
-        const url = {{ card_url|tojson }} || location.href;
-        const title = {{ (info.company_name or "Contact")|tojson }};
-        if(navigator.share){
-            try{ await navigator.share({title:title, url:url}); }catch(e){}
-        } else {
-            try{ await navigator.clipboard.writeText(url); this.textContent="Link copied!"; }
-            catch(e){ prompt("Copy this link:", url); }
-        }
+        var url = {{ card_url|tojson }} || location.href;
+        var title = {{ (d.card_business_name or "Contact")|tojson }};
+        if(navigator.share){ try{ await navigator.share({title:title, url:url}); }catch(e){} }
+        else { try{ await navigator.clipboard.writeText(url); this.textContent="Link copied!"; }catch(e){ prompt("Copy this link:", url); } }
     });
-
-    const smsBtn = document.getElementById("smsBtn");
+    var smsBtn = document.getElementById("smsBtn");
     if(smsBtn){
         smsBtn.addEventListener("click", function(){
-            const phoneEl = document.getElementById("smsPhone");
-            const status = document.getElementById("smsStatus");
-            const num = (phoneEl.value || "").replace(/[^0-9+]/g, "");
+            var el = document.getElementById("smsPhone");
+            var status = document.getElementById("smsStatus");
+            var num = (el.value || "").replace(/[^0-9+]/g, "");
             if(!num){ status.style.color="#dc2626"; status.textContent="Enter a phone number."; return; }
-            const url = {{ card_url|tojson }} || location.href;
-            const company = {{ (info.company_name or "our")|tojson }};
-            const body = "Here is the contact card for " + company + ": " + url;
-            // iOS uses "&body=", most others use "?body="
-            const sep = /iP(hone|od|ad)/.test(navigator.userAgent) ? "&" : "?";
-            status.style.color="#64748b"; status.textContent="Opening your Messages app...";
+            var url = {{ card_url|tojson }} || location.href;
+            var biz = {{ (d.card_business_name or "our")|tojson }};
+            var body = "Here is the contact card for " + biz + ": " + url;
+            var sep = /iP(hone|od|ad)/.test(navigator.userAgent) ? "&" : "?";
+            status.style.color="#7c708f"; status.textContent="Opening your Messages app...";
             window.location.href = "sms:" + num + sep + "body=" + encodeURIComponent(body);
         });
     }
