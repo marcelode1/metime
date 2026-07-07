@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+{% block title %}Calendar - {{ app_name }}{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+            <h1 style="margin-bottom:2px">Appointments</h1>
+            <p class="muted" style="margin:0" id="nextUpLine">Loading your schedule&hellip;</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn-ghost" id="notifBtn" style="margin:0;padding:10px 14px;font-size:14px">&#128276; Enable reminders</button>
+            <button type="button" id="newApptBtn" style="margin:0;padding:10px 16px;font-size:14px">+ New Appointment</button>
+        </div>
+    </div>
+</div>
+
+<div class="card calCard">
+    <div class="calNav">
+        <a class="calNavBtn" href="{{ url_for('admin_calendar', y=prev_y, m=prev_m) }}">&lsaquo;</a>
+        <div class="calMonthLabel">{{ month_label }}</div>
+        <a class="calNavBtn" href="{{ url_for('admin_calendar', y=next_y, m=next_m) }}">&rsaquo;</a>
+    </div>
+    <div style="text-align:center;margin-bottom:8px">
+        <a class="pill" href="{{ url_for('admin_calendar') }}">Jump to today</a>
+    </div>
+    <div class="calGrid calHead">
+        {% for wd in ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"] %}<div>{{ wd }}</div>{% endfor %}
+    </div>
+    {% for week in weeks %}
+    <div class="calGrid">
+        {% for day in week %}
+        {% set n = counts.get(day, 0) %}
+        <a class="calDay{% if day.month != month %} calOther{% endif %}{% if day == today %} calToday{% endif %}{% if day == selected %} calSelected{% endif %}{% if day.weekday() in settings.closed_days %} calClosed{% endif %}"
+           href="{{ url_for('admin_calendar', y=day.year, m=day.month, d=day.day) }}">
+            <span class="calNum">{{ day.day }}</span>
+            {% if n %}<span class="calCount">{{ n }}</span>{% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% endfor %}
+    <p class="muted" style="font-size:12px;margin:10px 0 0;text-align:center">
+        Open {{ settings.open }}&ndash;{{ settings.close }} &middot; {{ settings.slot }} min slots
+        {% if settings.closed_days %} &middot; Closed:
+            {% for cd in settings.closed_days|sort %}{{ weekday_names[cd][:3] }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% endif %}
+    </p>
+</div>
+
+<div class="card">
+    <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">{{ selected_label }}
+        {% if selected == today %}<span class="pill">Today</span>{% endif %}
+        {% if closed_today %}<span class="pill" style="background:#fde8e8;color:#b91c1c">Closed this weekday</span>{% endif %}
+    </h2>
+    {% if closed_today %}
+        <p class="muted">You're normally closed on {{ weekday_names[selected.weekday()] }}s &mdash; but you can still book here if you're making an exception.</p>
+    {% endif %}
+
+    <div class="slotList">
+        {% for s in slots %}
+            {% if s.appt %}
+                {% if s.starts_here %}
+                <details class="apptChip">
+                    <summary>
+                        <span class="slotTime">{{ s.label }}</span>
+                        <span class="apptMain">
+                            <strong>{{ s.appt.client_name }}</strong>
+                            <span class="apptMeta">{{ s.appt.service or "Appointment" }} &middot; {{ s.appt.duration_min }} min &middot; {{ s.appt.time_label }}</span>
+                        </span>
+                        <span class="apptChevron">&#9662;</span>
+                    </summary>
+                    <div class="apptBody">
+                        {% if s.appt.client_phone %}
+                            <p style="margin:0 0 8px"><a href="tel:{{ s.appt.client_phone }}">&#128222; {{ s.appt.client_phone }}</a>
+                            &nbsp; <a href="sms:{{ s.appt.client_phone }}">&#128172; Text</a></p>
+                        {% endif %}
+                        {% if s.appt.notes %}<p class="muted" style="margin:0 0 10px;white-space:pre-wrap">{{ s.appt.notes }}</p>{% endif %}
+                        <form method="post" action="{{ url_for('admin_appointment_update', appt_id=s.appt.id) }}">
+                            <div class="row2">
+                                <div><label>Date</label><input type="date" name="date" value="{{ s.appt.date_value }}"></div>
+                                <div><label>Time</label>
+                                    <select name="time">
+                                        {% for t in time_options %}<option value="{{ t.value }}" {% if t.value == s.appt.time_value %}selected{% endif %}>{{ t.label }}</option>{% endfor %}
+                                        {% if s.appt.time_value not in time_options|map(attribute="value")|list %}<option value="{{ s.appt.time_value }}" selected>{{ s.appt.time_value }}</option>{% endif %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row2">
+                                <div><label>Service</label>
+                                    <input name="service" list="serviceList" value="{{ s.appt.service or '' }}" placeholder="Type of massage">
+                                </div>
+                                <div><label>Duration</label>
+                                    <select name="duration_min">
+                                        {% for du in durations %}<option value="{{ du }}" {% if du == s.appt.duration_min %}selected{% endif %}>{{ du }} minutes</option>{% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row2">
+                                <div><label>Client name</label><input name="client_name" value="{{ s.appt.client_name }}"></div>
+                                <div><label>Phone</label><input name="client_phone" value="{{ s.appt.client_phone or '' }}"></div>
+                            </div>
+                            <input type="hidden" name="client_id" value="{{ s.appt.client_id or '' }}">
+                            <label>Notes</label>
+                            <textarea name="notes" style="min-height:60px">{{ s.appt.notes or '' }}</textarea>
+                            <div class="apptActions">
+                                <button type="submit" name="action" value="save" style="margin:0">Save changes</button>
+                                <a class="btn btn-ghost" style="margin:0" href="{{ url_for('admin_appointment_ics', appt_id=s.appt.id) }}">&#128197; Phone calendar</a>
+                                <button type="submit" name="action" value="complete" class="btnDone" style="margin:0">&#10003; Completed</button>
+                                <button type="submit" name="action" value="cancel" class="btnCancel" style="margin:0"
+                                        onclick="return confirm('Cancel this appointment? The slot will open up again.')">Cancel appt</button>
+                            </div>
+                        </form>
+                    </div>
+                </details>
+                {% else %}
+                <div class="slotRow slotCont">
+                    <span class="slotTime">{{ s.label }}</span>
+                    <span class="slotContBar">{{ s.appt.client_name }} &mdash; continues</span>
+                </div>
+                {% endif %}
+            {% else %}
+            <div class="slotRow {% if s.past %}slotPast{% endif %}">
+                <span class="slotTime">{{ s.label }}</span>
+                <span class="slotFree">Available</span>
+                <button type="button" class="slotBook" data-time="{{ s.value }}" data-label="{{ s.label }}">Book</button>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    {% if cancelled %}
+    <details style="margin-top:14px">
+        <summary class="muted" style="cursor:pointer;font-weight:700">Cancelled today ({{ cancelled|length }})</summary>
+        {% for a in cancelled %}
+        <div class="slotRow" style="opacity:.75">
+            <span class="slotTime">{{ a.time_label.split(' – ')[0] }}</span>
+            <span style="flex:1;text-decoration:line-through">{{ a.client_name }} &middot; {{ a.service or "Appointment" }}</span>
+            <form method="post" action="{{ url_for('admin_appointment_update', appt_id=a.id) }}" style="display:flex;gap:6px">
+                <button type="submit" name="action" value="rebook" class="slotBook" style="margin:0">Rebook</button>
+                <button type="submit" name="action" value="delete" class="btnCancel" style="margin:0;padding:8px 12px;font-size:13px"
+                        onclick="return confirm('Delete this cancelled appointment permanently?')">Delete</button>
+            </form>
+        </div>
+        {% endfor %}
+    </details>
+    {% endif %}
+</div>
+
+<div class="card">
+    <details>
+        <summary style="cursor:pointer;font-weight:800;font-size:16px">&#9881;&#65039; Calendar settings</summary>
+        <form method="post" action="{{ url_for('admin_calendar_settings') }}">
+            <input type="hidden" name="return_day" value="{{ selected.isoformat() }}">
+            <div class="row2">
+                <div><label>Opens at</label><input type="time" name="open_time" value="{{ settings.open }}"></div>
+                <div><label>Closes at</label><input type="time" name="close_time" value="{{ settings.close }}"></div>
+            </div>
+            <label>Appointment slot length</label>
+            <select name="slot_minutes">
+                {% for du in [30, 45, 60, 75, 90, 120] %}<option value="{{ du }}" {% if du == settings.slot %}selected{% endif %}>{{ du }} minutes</option>{% endfor %}
+            </select>
+            <label>Closed on</label>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                {% for wd in weekday_names %}
+                <label style="display:flex;gap:6px;align-items:center;margin:0;font-weight:600">
+                    <input type="checkbox" name="closed_days" value="{{ loop.index0 }}" style="width:auto" {% if loop.index0 in settings.closed_days %}checked{% endif %}>{{ wd[:3] }}
+                </label>
+                {% endfor %}
+            </div>
+            <button type="submit">Save settings</button>
+        </form>
+    </details>
+</div>
+
+<datalist id="serviceList">
+    {% for s in services %}<option value="{{ s }}">{% endfor %}</datalist>
+
+<!-- ============================ booking modal ============================ -->
+<div class="mtOverlay" id="bookOverlay" hidden>
+    <div class="mtModal">
+        <h3 style="margin-top:0">New Appointment</h3>
+        <p class="muted" style="margin:0 0 6px" id="bookWhen"></p>
+        <form method="post" action="{{ url_for('admin_calendar_new') }}">
+            <label>Existing client <span class="muted" style="font-weight:400">(optional &mdash; fills name &amp; phone)</span></label>
+            <select id="clientPick" name="client_id">
+                <option value="">&mdash; Walk-in / new caller &mdash;</option>
+                {% for c in clients %}<option value="{{ c.id }}" data-name="{{ c.name }}" data-phone="{{ c.phone }}">{{ c.name }}{% if c.phone %} &middot; {{ c.phone }}{% endif %}</option>{% endfor %}
+            </select>
+            <div class="row2">
+                <div><label>Client name *</label><input name="client_name" id="bookName" required placeholder="Who is this for?"></div>
+                <div><label>Phone</label><input name="client_phone" id="bookPhone" inputmode="tel" placeholder="Their number"></div>
+            </div>
+            <div class="row2">
+                <div><label>Date</label><input type="date" name="date" id="bookDate" value="{{ selected.isoformat() }}"></div>
+                <div><label>Time</label>
+                    <select name="time" id="bookTime">
+                        {% for t in time_options %}<option value="{{ t.value }}">{{ t.label }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row2">
+                <div><label>Service</label><input name="service" list="serviceList" placeholder="e.g. Deep Tissue"></div>
+                <div><label>Duration</label>
+                    <select name="duration_min">
+                        {% for du in durations %}<option value="{{ du }}" {% if du == 60 %}selected{% endif %}>{{ du }} minutes</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <label>Notes</label>
+            <textarea name="notes" style="min-height:60px" placeholder="Pressure preference, focus areas, anything to remember"></textarea>
+            <div style="display:flex;gap:10px">
+                <button type="submit" style="flex:1">Save appointment</button>
+                <button type="button" class="btn-ghost" id="bookClose" style="flex:0 0 auto">Close</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===================== saved / add-to-phone modal ===================== -->
+{% if saved_appt %}
+<div class="mtOverlay" id="savedOverlay">
+    <div class="mtModal" style="text-align:center">
+        <div style="font-size:44px;line-height:1">&#127881;</div>
+        <h3 style="margin:8px 0 4px">Appointment saved!</h3>
+        <p style="margin:0 0 4px"><strong>{{ saved_appt.client_name }}</strong> &middot; {{ saved_appt.service or "Appointment" }}</p>
+        <p class="muted" style="margin:0 0 14px">{{ selected_label }} &middot; {{ saved_appt.time_label }}</p>
+        <p style="margin:0 0 14px">Would you like to save it to your phone's main calendar too? It will come with its own 1-hour reminder.</p>
+        <a class="btn btn-block" style="margin:0 0 10px" href="{{ url_for('admin_appointment_ics', appt_id=saved_appt.id) }}">&#128197; Add to Phone Calendar</a>
+        <button type="button" class="btn-ghost btn-block" id="savedClose" style="margin:0">Not now</button>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.calCard{padding-bottom:14px}
+.calNav{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.calMonthLabel{font-weight:900;font-size:19px}
+.calNavBtn{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;
+    background:#f1e8ff;color:var(--brand-dark);font-size:22px;font-weight:900;text-decoration:none}
+.calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+.calHead div{text-align:center;font-size:11px;font-weight:800;color:var(--muted);padding:4px 0;text-transform:uppercase}
+.calDay{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    min-height:52px;padding:6px 2px 2px;border-radius:12px;text-decoration:none;color:var(--text);
+    background:#faf7ff;border:1px solid transparent}
+.calDay:hover{border-color:var(--brand)}
+.calNum{font-weight:700;font-size:14px}
+.calOther{opacity:.35}
+.calClosed{background:repeating-linear-gradient(45deg,#faf7ff,#faf7ff 6px,#f3ecfd 6px,#f3ecfd 12px)}
+.calToday .calNum{box-shadow:0 0 0 2px var(--accent);border-radius:999px;padding:1px 7px}
+.calSelected{background:var(--brand);color:#fff}
+.calSelected .calCount{background:#fff;color:var(--brand-dark)}
+.calCount{margin-top:3px;background:var(--brand);color:#fff;font-size:11px;font-weight:800;
+    border-radius:999px;padding:1px 7px;line-height:1.5}
+@media(max-width:560px){.calDay{min-height:44px}.calNum{font-size:13px}}
+
+.slotList{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.slotRow{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px dashed var(--border);border-radius:12px}
+.slotTime{flex:0 0 72px;font-weight:800;font-size:14px;color:var(--brand-dark)}
+.slotFree{flex:1;color:#0e8f5b;font-weight:700;font-size:14px}
+.slotPast{opacity:.55}
+.slotBook{margin:0;padding:8px 16px;font-size:14px;border-radius:10px}
+.slotCont{border-style:solid;background:#f6f1fe;border-color:#e3d5fa}
+.slotContBar{flex:1;color:var(--muted);font-size:13px;font-style:italic}
+
+.apptChip{border:1px solid #d9c8f7;border-radius:14px;background:linear-gradient(135deg,#f6f0fe,#efe6fc);overflow:hidden}
+.apptChip summary{display:flex;align-items:center;gap:12px;padding:12px;cursor:pointer;list-style:none}
+.apptChip summary::-webkit-details-marker{display:none}
+.apptMain{flex:1;display:flex;flex-direction:column;min-width:0}
+.apptMain strong{font-size:15px}
+.apptMeta{font-size:12.5px;color:var(--muted)}
+.apptChevron{color:var(--brand-dark);font-size:13px;transition:transform .15s}
+.apptChip[open] .apptChevron{transform:rotate(180deg)}
+.apptBody{padding:0 12px 14px}
+.apptActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.apptActions .btn,.apptActions button{padding:10px 14px;font-size:14px}
+.btnDone{background:#0e8f5b}.btnDone:hover{background:#0b7048}
+.btnCancel{background:#fff;color:var(--danger);border:1px solid #f3c1c1}
+.btnCancel:hover{background:#fdeaea}
+
+.mtOverlay{position:fixed;inset:0;z-index:2000;background:rgba(42,33,64,.55);display:flex;align-items:flex-start;
+    justify-content:center;padding:20px 14px calc(20px + env(safe-area-inset-bottom));overflow:auto}
+.mtOverlay[hidden]{display:none!important}
+.mtModal{background:#fff;border-radius:18px;padding:20px;width:100%;max-width:480px;
+    margin-top:max(10px, env(safe-area-inset-top));box-shadow:0 18px 60px rgba(42,33,64,.35)}
+</style>
+
+<script>
+(function(){
+    // ---------- booking modal ----------
+    var overlay = document.getElementById("bookOverlay");
+    var bookWhen = document.getElementById("bookWhen");
+    var bookTime = document.getElementById("bookTime");
+    var selectedLabel = {{ selected_label|tojson }};
+    function openBook(time, label){
+        if(time){ bookTime.value = time; }
+        bookWhen.textContent = selectedLabel + (label ? " at " + label : "");
+        overlay.hidden = false;
+        document.body.style.overflow = "hidden";
+    }
+    function closeBook(){ overlay.hidden = true; document.body.style.overflow = ""; }
+    document.querySelectorAll(".slotBook[data-time]").forEach(function(b){
+        b.addEventListener("click", function(){ openBook(b.dataset.time, b.dataset.label); });
+    });
+    document.getElementById("newApptBtn").addEventListener("click", function(){ openBook(null, null); });
+    document.getElementById("bookClose").addEventListener("click", closeBook);
+    overlay.addEventListener("click", function(e){ if(e.target === overlay) closeBook(); });
+
+    // Picking an existing client fills name + phone.
+    var pick = document.getElementById("clientPick");
+    pick.addEventListener("change", function(){
+        var opt = pick.options[pick.selectedIndex];
+        if(opt && opt.value){
+            document.getElementById("bookName").value = opt.dataset.name || "";
+            document.getElementById("bookPhone").value = opt.dataset.phone || "";
+        }
+    });
+
+    // ---------- saved / add-to-phone modal ----------
+    var savedOverlay = document.getElementById("savedOverlay");
+    if(savedOverlay){
+        function closeSaved(){
+            savedOverlay.remove();
+            // Drop ?saved= from the URL so a refresh doesn't re-open the popup.
+            var u = new URL(window.location.href); u.searchParams.delete("saved");
+            window.history.replaceState({}, "", u.toString());
+        }
+        document.getElementById("savedClose").addEventListener("click", closeSaved);
+        savedOverlay.addEventListener("click", function(e){ if(e.target === savedOverlay) closeSaved(); });
+    }
+
+    // ---------- in-app appointment reminders ----------
+    var notifBtn = document.getElementById("notifBtn");
+    var nextUpLine = document.getElementById("nextUpLine");
+    var THRESHOLDS = [60, 15]; // minutes before start
+
+    function notify(title, body, tag){
+        try{
+            if(Notification.permission !== "granted") return;
+            if(navigator.serviceWorker && navigator.serviceWorker.ready){
+                navigator.serviceWorker.ready.then(function(reg){
+                    reg.showNotification(title, {body: body, tag: tag, icon: "/static/icon-192.png", badge: "/static/icon-192.png"});
+                }).catch(function(){ new Notification(title, {body: body, tag: tag, icon: "/static/icon-192.png"}); });
+            } else {
+                new Notification(title, {body: body, tag: tag, icon: "/static/icon-192.png"});
+            }
+        }catch(e){}
+    }
+
+    function refreshNotifBtn(){
+        if(!("Notification" in window)){ notifBtn.style.display = "none"; return; }
+        if(Notification.permission === "granted"){ notifBtn.textContent = "🔔 Reminders on"; notifBtn.disabled = true; notifBtn.style.opacity = ".7"; }
+        else if(Notification.permission === "denied"){ notifBtn.textContent = "🔕 Reminders blocked"; notifBtn.disabled = true; notifBtn.style.opacity = ".7"; }
+    }
+    refreshNotifBtn();
+    notifBtn.addEventListener("click", function(){
+        if(!("Notification" in window)) return;
+        Notification.requestPermission().then(function(p){
+            refreshNotifBtn();
+            if(p === "granted"){ notify("MeTime reminders are on", "You'll be alerted 1 hour and 15 minutes before each appointment while the app is open.", "mt-welcome"); tick(); }
+        });
+    });
+
+    function fmtCountdown(mins){
+        if(mins < 1) return "starting now";
+        if(mins < 60) return "in " + Math.round(mins) + " min";
+        var h = Math.floor(mins/60), m = Math.round(mins % 60);
+        return "in " + h + "h" + (m ? " " + m + "m" : "");
+    }
+
+    var cache = null;
+    function tick(){
+        var apply = function(data){
+            var now = new Date();
+            var upcoming = data.appointments.map(function(a){
+                return Object.assign({}, a, {mins: (new Date(a.start) - now) / 60000});
+            }).filter(function(a){ return a.mins > -a.duration; });
+
+            var next = upcoming.filter(function(a){ return a.mins > -5; })[0];
+            if(next){
+                nextUpLine.innerHTML = "Next up: <strong>" + next.client + "</strong> · " + next.service +
+                    " · " + next.label + " (" + fmtCountdown(Math.max(0, next.mins)) + ")";
+            } else {
+                nextUpLine.textContent = "No upcoming appointments in the next 7 days.";
+            }
+
+            // Fire reminders once per appointment per threshold.
+            upcoming.forEach(function(a){
+                THRESHOLDS.forEach(function(th){
+                    if(a.mins <= th && a.mins > th - 6){
+                        var key = "mt_notif_" + a.id + "_" + th;
+                        if(localStorage.getItem(key)) return;
+                        localStorage.setItem(key, "1");
+                        notify("Appointment " + fmtCountdown(a.mins),
+                               a.client + " — " + a.service + " at " + a.label.split(", ")[1], key);
+                    }
+                });
+            });
+
+            // One friendly summary per day.
+            var todayKey = "mt_daily_" + now.toISOString().slice(0,10);
+            if(!localStorage.getItem(todayKey)){
+                localStorage.setItem(todayKey, "1");
+                var todays = upcoming.filter(function(a){ return new Date(a.start).toDateString() === now.toDateString() && a.mins > 0; });
+                if(todays.length){
+                    notify("Today at MeTime", "You have " + todays.length + " appointment" + (todays.length > 1 ? "s" : "") +
+                           " today. First: " + todays[0].client + " at " + todays[0].label.split(", ")[1], todayKey);
+                }
+            }
+        };
+        if(cache){ apply(cache); }
+        fetch("{{ url_for('admin_api_upcoming') }}", {credentials: "same-origin"})
+            .then(function(r){ return r.json(); })
+            .then(function(data){ cache = data; apply(data); })
+            .catch(function(){});
+    }
+    tick();
+    setInterval(tick, 60000);
+})();
+</script>
+{% endblock %}

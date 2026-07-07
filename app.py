@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, Response, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date, time as dtime
 from functools import wraps
+import calendar as pycalendar
 import os, base64, mimetypes, re
 import psycopg
 from psycopg.rows import dict_row
@@ -82,6 +83,21 @@ SCHEMA = [
         promo_opt_in BOOLEAN NOT NULL DEFAULT FALSE,
         client_signature TEXT,
         signed_date TEXT,
+        created_at TEXT,
+        updated_at TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS appointments (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        client_name TEXT NOT NULL,
+        client_phone TEXT,
+        service TEXT,
+        start_at TIMESTAMP NOT NULL,
+        duration_min INTEGER NOT NULL DEFAULT 60,
+        notes TEXT,
+        status TEXT NOT NULL DEFAULT 'booked',
         created_at TEXT,
         updated_at TEXT
     )
@@ -590,6 +606,378 @@ def admin_client_delete(client_id):
     conn.close()
     flash(f'Client "{client["name"]}" was deleted.')
     return redirect(url_for("admin_dashboard"))
+
+
+# ---------------------------------------------------------------- appointment calendar
+APPT_SERVICES = [
+    "Swedish Massage", "Deep Tissue", "Hot Stone", "Prenatal Massage",
+    "Sports Massage", "Reflexology", "Chair Massage", "Consultation",
+]
+APPT_DURATIONS = [30, 45, 60, 75, 90, 120]
+WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def local_now():
+    """Business-local time (the server runs in UTC on Render)."""
+    tz_name = get_setting("cal_timezone", "America/New_York") or "America/New_York"
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(tz_name)).replace(tzinfo=None)
+    except Exception:
+        return datetime.now()
+
+
+def _parse_hhmm(value, fallback):
+    try:
+        dtime.fromisoformat(value)
+        return value
+    except Exception:
+        return fallback
+
+
+def cal_settings():
+    open_t = _parse_hhmm(get_setting("cal_open_time", "09:00") or "09:00", "09:00")
+    close_t = _parse_hhmm(get_setting("cal_close_time", "18:00") or "18:00", "18:00")
+    if close_t <= open_t:
+        open_t, close_t = "09:00", "18:00"
+    try:
+        slot = max(15, min(240, int(get_setting("cal_slot_minutes", "60") or 60)))
+    except Exception:
+        slot = 60
+    closed_raw = get_setting("cal_closed_days", "6")
+    closed_days = {int(x) for x in closed_raw.split(",") if x.strip().isdigit() and 0 <= int(x) <= 6}
+    return {"open": open_t, "close": close_t, "slot": slot, "closed_days": closed_days}
+
+
+def fmt12(dt):
+    return dt.strftime("%I:%M %p").lstrip("0")
+
+
+def day_time_options(d, settings):
+    """Every slot time between open and close for a given date."""
+    out = []
+    t = datetime.combine(d, dtime.fromisoformat(settings["open"]))
+    end = datetime.combine(d, dtime.fromisoformat(settings["close"]))
+    while t < end:
+        out.append({"value": t.strftime("%H:%M"), "label": fmt12(t)})
+        t += timedelta(minutes=settings["slot"])
+    return out
+
+
+def appointment_conflict(conn, start_at, duration_min, exclude_id=None):
+    """Return the booked appointment overlapping [start, start+duration), if any."""
+    end_at = start_at + timedelta(minutes=duration_min)
+    row = conn.execute(
+        "SELECT id, client_name, start_at, duration_min FROM appointments "
+        "WHERE status = 'booked' AND id <> %s "
+        "AND start_at < %s AND start_at + make_interval(mins => duration_min) > %s "
+        "ORDER BY start_at LIMIT 1",
+        (exclude_id or 0, end_at, start_at)
+    ).fetchone()
+    return row
+
+
+def load_appointment(conn, appt_id):
+    return conn.execute("SELECT * FROM appointments WHERE id = %s", (appt_id,)).fetchone()
+
+
+def clients_for_picker(conn):
+    return conn.execute(
+        "SELECT id, name, COALESCE(phone,'') AS phone FROM users WHERE role = 'client' ORDER BY lower(name)"
+    ).fetchall()
+
+
+@app.route("/admin/calendar")
+@admin_required
+def admin_calendar():
+    now = local_now()
+    settings = cal_settings()
+    try:
+        y = int(request.args.get("y", now.year))
+        m = int(request.args.get("m", now.month))
+        d = int(request.args.get("d", 0))
+        date(y, m, 1)
+    except Exception:
+        y, m, d = now.year, now.month, 0
+    if d:
+        try:
+            selected = date(y, m, d)
+        except Exception:
+            selected = now.date()
+    else:
+        selected = now.date() if (now.year, now.month) == (y, m) else date(y, m, 1)
+
+    # Month grid (weeks start on Sunday), including spill-over days.
+    weeks = pycalendar.Calendar(firstweekday=6).monthdatescalendar(y, m)
+    grid_start, grid_end = weeks[0][0], weeks[-1][-1] + timedelta(days=1)
+
+    conn = db()
+    month_rows = conn.execute(
+        "SELECT id, start_at FROM appointments WHERE status = 'booked' AND start_at >= %s AND start_at < %s",
+        (datetime.combine(grid_start, dtime.min), datetime.combine(grid_end, dtime.min))
+    ).fetchall()
+    counts = {}
+    for r in month_rows:
+        counts[r["start_at"].date()] = counts.get(r["start_at"].date(), 0) + 1
+
+    day_appts = conn.execute(
+        "SELECT a.*, u.name AS linked_name FROM appointments a LEFT JOIN users u ON u.id = a.client_id "
+        "WHERE a.start_at >= %s AND a.start_at < %s ORDER BY a.start_at",
+        (datetime.combine(selected, dtime.min), datetime.combine(selected + timedelta(days=1), dtime.min))
+    ).fetchall()
+    clients = clients_for_picker(conn)
+    conn.close()
+
+    for a in day_appts:
+        a["end_at"] = a["start_at"] + timedelta(minutes=a["duration_min"])
+        a["time_label"] = fmt12(a["start_at"]) + " – " + fmt12(a["end_at"])
+        a["time_value"] = a["start_at"].strftime("%H:%M")
+        a["date_value"] = a["start_at"].strftime("%Y-%m-%d")
+
+    booked = [a for a in day_appts if a["status"] == "booked"]
+    slots = []
+    t = datetime.combine(selected, dtime.fromisoformat(settings["open"]))
+    day_end = datetime.combine(selected, dtime.fromisoformat(settings["close"]))
+    step = timedelta(minutes=settings["slot"])
+    while t < day_end:
+        hit = next((a for a in booked if a["start_at"] < t + step and a["end_at"] > t), None)
+        slots.append({
+            "label": fmt12(t),
+            "value": t.strftime("%H:%M"),
+            "appt": hit,
+            "starts_here": bool(hit and t <= hit["start_at"] < t + step),
+            "past": t < now,
+        })
+        t += step
+
+    prev_m = date(y, m, 15) - timedelta(days=31)
+    next_m = date(y, m, 15) + timedelta(days=31)
+    saved_id = request.args.get("saved", type=int)
+    saved_appt = next((a for a in day_appts if a["id"] == saved_id), None) if saved_id else None
+
+    return render_template(
+        "admin_calendar.html",
+        settings=settings, weeks=weeks, counts=counts, year=y, month=m,
+        month_label=date(y, m, 1).strftime("%B %Y"),
+        prev_y=prev_m.year, prev_m=prev_m.month, next_y=next_m.year, next_m=next_m.month,
+        selected=selected, selected_label=selected.strftime("%A, %B %d").replace(" 0", " "),
+        today=now.date(), slots=slots, day_appts=day_appts,
+        cancelled=[a for a in day_appts if a["status"] == "cancelled"],
+        time_options=day_time_options(selected, settings),
+        clients=clients, services=APPT_SERVICES, durations=APPT_DURATIONS,
+        weekday_names=WEEKDAY_NAMES, closed_today=selected.weekday() in settings["closed_days"],
+        saved_appt=saved_appt,
+    )
+
+
+def _appointment_fields_from_form():
+    client_id = request.form.get("client_id", type=int) or None
+    name = request.form.get("client_name", "").strip()
+    phone = request.form.get("client_phone", "").strip()
+    service = request.form.get("service", "").strip()
+    notes = request.form.get("notes", "").strip()
+    duration = request.form.get("duration_min", type=int) or 60
+    if duration not in APPT_DURATIONS:
+        duration = max(15, min(240, duration))
+    try:
+        start_at = datetime.combine(
+            date.fromisoformat(request.form.get("date", "")),
+            dtime.fromisoformat(request.form.get("time", ""))
+        )
+    except Exception:
+        start_at = None
+    return client_id, name, phone, service, notes, duration, start_at
+
+
+def _back_to_day(d, extra=""):
+    return redirect(url_for("admin_calendar", y=d.year, m=d.month, d=d.day) + extra)
+
+
+@app.route("/admin/calendar/new", methods=["POST"])
+@admin_required
+def admin_calendar_new():
+    client_id, name, phone, service, notes, duration, start_at = _appointment_fields_from_form()
+    if not start_at:
+        flash("Please pick a valid date and time.")
+        return redirect(url_for("admin_calendar"))
+    if not name:
+        flash("Please enter the client's name.")
+        return _back_to_day(start_at.date())
+    conn = db()
+    clash = appointment_conflict(conn, start_at, duration)
+    if clash:
+        conn.close()
+        flash(f'That time overlaps {clash["client_name"]} at {fmt12(clash["start_at"])}. Pick another slot.')
+        return _back_to_day(start_at.date())
+    row = conn.execute(
+        "INSERT INTO appointments (client_id, client_name, client_phone, service, start_at, duration_min, notes, status, created_at, updated_at) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, 'booked', %s, %s) RETURNING id",
+        (client_id, name, phone, service, start_at, duration, notes, now_iso(), now_iso())
+    ).fetchone()
+    conn.commit()
+    conn.close()
+    return _back_to_day(start_at.date(), f'&saved={row["id"]}')
+
+
+@app.route("/admin/appointment/<int:appt_id>/update", methods=["POST"])
+@admin_required
+def admin_appointment_update(appt_id):
+    action = request.form.get("action", "save")
+    conn = db()
+    appt = load_appointment(conn, appt_id)
+    if not appt:
+        conn.close()
+        flash("Appointment not found.")
+        return redirect(url_for("admin_calendar"))
+
+    if action in ("complete", "cancel"):
+        new_status = "completed" if action == "complete" else "cancelled"
+        conn.execute("UPDATE appointments SET status = %s, updated_at = %s WHERE id = %s",
+                     (new_status, now_iso(), appt_id))
+        conn.commit()
+        conn.close()
+        flash("Appointment marked completed." if action == "complete" else "Appointment cancelled — that slot is open again.")
+        return _back_to_day(appt["start_at"].date())
+
+    if action == "rebook":
+        clash = appointment_conflict(conn, appt["start_at"], appt["duration_min"], exclude_id=appt_id)
+        if clash:
+            conn.close()
+            flash(f'Cannot rebook — that time now overlaps {clash["client_name"]} at {fmt12(clash["start_at"])}.')
+            return _back_to_day(appt["start_at"].date())
+        conn.execute("UPDATE appointments SET status = 'booked', updated_at = %s WHERE id = %s", (now_iso(), appt_id))
+        conn.commit()
+        conn.close()
+        flash("Appointment re-booked.")
+        return _back_to_day(appt["start_at"].date())
+
+    if action == "delete":
+        conn.execute("DELETE FROM appointments WHERE id = %s", (appt_id,))
+        conn.commit()
+        conn.close()
+        flash("Appointment deleted.")
+        return _back_to_day(appt["start_at"].date())
+
+    # action == "save": edit details / move time
+    client_id, name, phone, service, notes, duration, start_at = _appointment_fields_from_form()
+    if not start_at or not name:
+        conn.close()
+        flash("Please enter a name and a valid date and time.")
+        return _back_to_day(appt["start_at"].date())
+    if appt["status"] == "booked":
+        clash = appointment_conflict(conn, start_at, duration, exclude_id=appt_id)
+        if clash:
+            conn.close()
+            flash(f'That time overlaps {clash["client_name"]} at {fmt12(clash["start_at"])}. Pick another slot.')
+            return _back_to_day(appt["start_at"].date())
+    conn.execute(
+        "UPDATE appointments SET client_id = %s, client_name = %s, client_phone = %s, service = %s, "
+        "start_at = %s, duration_min = %s, notes = %s, updated_at = %s WHERE id = %s",
+        (client_id, name, phone, service, start_at, duration, notes, now_iso(), appt_id)
+    )
+    conn.commit()
+    conn.close()
+    flash("Appointment updated.")
+    return _back_to_day(start_at.date(), f"&saved={appt_id}")
+
+
+def _ics_escape(v):
+    return str(v or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
+
+
+@app.route("/admin/appointment/<int:appt_id>.ics")
+@admin_required
+def admin_appointment_ics(appt_id):
+    conn = db()
+    appt = load_appointment(conn, appt_id)
+    conn.close()
+    if not appt:
+        flash("Appointment not found.")
+        return redirect(url_for("admin_calendar"))
+    start = appt["start_at"]
+    end = start + timedelta(minutes=appt["duration_min"])
+    business = get_setting("card_business_name", APP_NAME)
+    address = get_setting("card_address", "")
+    summary = f'{appt["service"] or "Appointment"} – {appt["client_name"]}'
+    desc_parts = [f'Client: {appt["client_name"]}']
+    if appt["client_phone"]:
+        desc_parts.append(f'Phone: {appt["client_phone"]}')
+    if appt["notes"]:
+        desc_parts.append(f'Notes: {appt["notes"]}')
+    desc_parts.append(f'Booked with {business}')
+    # Floating local times so the event lands at the right wall-clock time on the phone.
+    lines = [
+        "BEGIN:VCALENDAR", "VERSION:2.0", f"PRODID:-//{_ics_escape(business)}//Appointments//EN",
+        "BEGIN:VEVENT",
+        f"UID:metime-appt-{appt['id']}@metime",
+        "DTSTAMP:" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"),
+        "DTSTART:" + start.strftime("%Y%m%dT%H%M%S"),
+        "DTEND:" + end.strftime("%Y%m%dT%H%M%S"),
+        f"SUMMARY:{_ics_escape(summary)}",
+        f"DESCRIPTION:{_ics_escape(chr(10).join(desc_parts))}",
+    ]
+    if address:
+        lines.append(f"LOCATION:{_ics_escape(address)}")
+    lines += [
+        "BEGIN:VALARM", "TRIGGER:-PT1H", "ACTION:DISPLAY",
+        f"DESCRIPTION:{_ics_escape('Upcoming appointment: ' + summary)}", "END:VALARM",
+        "BEGIN:VALARM", "TRIGGER:-PT24H", "ACTION:DISPLAY",
+        f"DESCRIPTION:{_ics_escape('Tomorrow: ' + summary)}", "END:VALARM",
+        "END:VEVENT", "END:VCALENDAR",
+    ]
+    return Response("\r\n".join(lines), mimetype="text/calendar",
+                    headers={"Content-Disposition": f"inline; filename=appointment-{appt['id']}.ics"})
+
+
+@app.route("/admin/api/upcoming")
+@admin_required
+def admin_api_upcoming():
+    """Booked appointments for the next 7 days — powers the in-app reminders."""
+    now = local_now()
+    conn = db()
+    rows = conn.execute(
+        "SELECT id, client_name, service, start_at, duration_min FROM appointments "
+        "WHERE status = 'booked' AND start_at >= %s AND start_at < %s ORDER BY start_at",
+        (now - timedelta(hours=3), now + timedelta(days=7))
+    ).fetchall()
+    conn.close()
+    return jsonify({
+        "now": now.strftime("%Y-%m-%dT%H:%M:%S"),
+        "appointments": [{
+            "id": r["id"],
+            "client": r["client_name"],
+            "service": r["service"] or "Appointment",
+            "start": r["start_at"].strftime("%Y-%m-%dT%H:%M:%S"),
+            "label": r["start_at"].strftime("%a %b %d, ") + fmt12(r["start_at"]),
+            "duration": r["duration_min"],
+        } for r in rows],
+    })
+
+
+@app.route("/admin/calendar/settings", methods=["POST"])
+@admin_required
+def admin_calendar_settings():
+    open_t = _parse_hhmm(request.form.get("open_time", ""), "09:00")
+    close_t = _parse_hhmm(request.form.get("close_time", ""), "18:00")
+    if close_t <= open_t:
+        flash("Closing time must be after opening time — hours were not changed.")
+    else:
+        set_setting("cal_open_time", open_t)
+        set_setting("cal_close_time", close_t)
+    try:
+        slot = max(15, min(240, int(request.form.get("slot_minutes", "60"))))
+        set_setting("cal_slot_minutes", str(slot))
+    except Exception:
+        pass
+    closed = [v for v in request.form.getlist("closed_days") if v.isdigit() and 0 <= int(v) <= 6]
+    set_setting("cal_closed_days", ",".join(closed))
+    flash("Calendar settings saved.")
+    d = request.form.get("return_day", "")
+    try:
+        rd = date.fromisoformat(d)
+        return _back_to_day(rd)
+    except Exception:
+        return redirect(url_for("admin_calendar"))
 
 
 # ---------------------------------------------------------------- business card

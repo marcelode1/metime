@@ -71,6 +71,7 @@
         </a>
         <nav>
             {% if session_role == 'admin' %}
+                <a href="{{ url_for('admin_calendar') }}">Calendar</a>
                 <a href="{{ url_for('admin_dashboard') }}">Clients</a>
                 <a href="{{ url_for('admin_promotions') }}">Promotions</a>
                 <a class="navDesktopOnly" href="{{ url_for('admin_card') }}">Edit Card</a>

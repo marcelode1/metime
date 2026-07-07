@@ -8,7 +8,10 @@
         <input name="q" value="{{ q }}" placeholder="Search by name, email, or phone" style="margin:0">
         <button type="submit" style="margin:0">Search</button>
     </form>
-    <a class="btn btn-ghost" href="{{ url_for('admin_card') }}" style="margin-top:12px">My Business Card</a>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn" href="{{ url_for('admin_calendar') }}" style="margin-top:12px">&#128197; Appointment Calendar</a>
+        <a class="btn btn-ghost" href="{{ url_for('admin_card') }}" style="margin-top:12px">My Business Card</a>
+    </div>
 </div>
 
 <div class="card">
