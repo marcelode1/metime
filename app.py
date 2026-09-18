@@ -17,8 +17,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "CHANGE_THIS_SECRET_KEY")
 # "Keep me logged in" sessions last this long; otherwise the session ends when the browser closes.
 app.permanent_session_lifetime = timedelta(days=30)
-# Largest upload accepted (the menu PDF is the biggest file we take).
-app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
+# Largest upload accepted (the menu PDF / pictures are the biggest files we take).
+app.config["MAX_CONTENT_LENGTH"] = 40 * 1024 * 1024
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 APP_NAME = os.environ.get("APP_NAME", "MeTime")
@@ -146,6 +146,8 @@ MIGRATIONS = [
     "ALTER TABLE client_intake ADD COLUMN IF NOT EXISTS promo_opt_in BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS reminder_24h_sent_at TEXT",
     "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS reminder_6h_sent_at TEXT",
+    # The menu used to be a single PDF under 'menu_pdf'; it is now page 1 of the menu.
+    "UPDATE stored_files SET key = 'menu:01' WHERE key = 'menu_pdf'",
 ]
 
 CONDITION_OPTIONS = [
@@ -353,7 +355,7 @@ def index():
         return redirect(url_for("admin_dashboard"))
     if session.get("user_id"):
         return redirect(url_for("home"))
-    return render_template("landing.html", has_menu=bool(menu_info()))
+    return render_template("landing.html", has_menu=bool(menu_files()))
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -1235,27 +1237,51 @@ def admin_reminders():
 
 
 # ---------------------------------------------------------------- settings / service menu
-MENU_FILE_KEY = "menu_pdf"
+# The menu is either one PDF or up to MENU_MAX_FILES pictures, stored as stored_files rows
+# keyed menu:01, menu:02, ... in display order.
+MENU_KEY_PREFIX = "menu:"
+MENU_MAX_FILES = 10
 MENU_MAX_BYTES = 15 * 1024 * 1024
+MENU_EXTENSIONS = {"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png",
+                   "image/webp": ".webp", "image/gif": ".gif"}
 
 
-def menu_info():
-    """Metadata of the uploaded services & prices PDF (without the file bytes), or None."""
+def detect_menu_type(raw):
+    """Identify an upload by its content (not its name). Returns a mime type or None."""
+    head = raw[:16]
+    if b"%PDF" in raw[:1024]:
+        return "application/pdf"
+    if head.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if head[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "image/webp"
+    if head[4:8] == b"ftyp" and head[8:12] in (b"heic", b"heix", b"hevc", b"heif", b"mif1", b"msf1"):
+        return "image/heic"
+    return None
+
+
+def menu_files():
+    """The uploaded menu files in display order (metadata + URL, without the bytes)."""
     try:
         conn = db()
-        row = conn.execute(
-            "SELECT filename, size_bytes, uploaded_at FROM stored_files WHERE key = %s", (MENU_FILE_KEY,)
-        ).fetchone()
+        rows = conn.execute(
+            "SELECT key, filename, mime, size_bytes, uploaded_at FROM stored_files "
+            "WHERE key LIKE %s ORDER BY key", (MENU_KEY_PREFIX + "%",)
+        ).fetchall()
         conn.close()
-        return row
     except Exception:
-        return None
-
-
-def menu_pdf_url(info):
-    # Versioned by upload time so phones never show an old cached menu.
-    version = re.sub(r"[^0-9]", "", (info or {}).get("uploaded_at") or "")[:14]
-    return url_for("menu_pdf", v=version or None)
+        return []
+    for r in rows:
+        r["page"] = int(r["key"][len(MENU_KEY_PREFIX):] or 0)
+        r["is_pdf"] = r["mime"] == "application/pdf"
+        # Versioned by upload time so phones never show an old cached menu.
+        version = re.sub(r"[^0-9]", "", r.get("uploaded_at") or "")[:14]
+        r["url"] = url_for("menu_file", page=r["page"], v=version or None)
+    return rows
 
 
 def human_size(n):
@@ -1267,8 +1293,32 @@ def human_size(n):
 
 @app.errorhandler(413)
 def upload_too_large(e):
-    flash("That file is too large — keep uploads under 15 MB.")
+    flash("That upload is too large — keep each file under 15 MB and the whole upload under 40 MB.")
     return redirect(request.referrer or url_for("index"))
+
+
+def _read_menu_uploads(uploads):
+    """Validate the chosen files. Returns (files, error) where files = [(filename, mime, bytes)]."""
+    files = []
+    for f in uploads:
+        raw = f.read()
+        mime = detect_menu_type(raw) if raw else None
+        name = f.filename
+        if not raw:
+            return None, f'"{name}" is empty.'
+        if mime == "image/heic":
+            return None, (f'"{name}" is an iPhone HEIC photo, which most phones and browsers can\'t show. '
+                          "Please upload it as a JPG or PNG (a screenshot of the photo works too).")
+        if not mime:
+            return None, f'"{name}" is not a PDF or a picture (JPG, PNG, WEBP or GIF).'
+        if len(raw) > MENU_MAX_BYTES:
+            return None, f'"{name}" is too large — keep each file under 15 MB.'
+        files.append((name, mime, raw))
+    if len(files) > 1 and any(m == "application/pdf" for _, m, _ in files):
+        return None, "Upload either one PDF or pictures — not both together."
+    if len(files) > MENU_MAX_FILES:
+        return None, f"Upload up to {MENU_MAX_FILES} pictures at a time."
+    return files, None
 
 
 @app.route("/admin/settings", methods=["GET", "POST"])
@@ -1277,82 +1327,84 @@ def admin_settings():
     if request.method == "POST":
         action = request.form.get("action", "")
         if action == "upload_menu":
-            f = request.files.get("menu_pdf")
-            raw = f.read() if f and f.filename else b""
-            if not raw:
-                flash("Choose a PDF file to upload.")
-            elif b"%PDF" not in raw[:1024]:
-                flash("That file is not a PDF. Please save or export your menu as a PDF and try again.")
-            elif len(raw) > MENU_MAX_BYTES:
-                flash("That PDF is too large — keep it under 15 MB.")
+            uploads = [f for f in request.files.getlist("menu_file") if f and f.filename]
+            files, error = _read_menu_uploads(uploads) if uploads else (None, "Choose a PDF or picture(s) to upload.")
+            if error:
+                flash(error)
             else:
+                # A new upload replaces the whole menu.
                 conn = db()
-                conn.execute(
-                    "INSERT INTO stored_files (key, filename, mime, size_bytes, data, uploaded_at) "
-                    "VALUES (%s, %s, 'application/pdf', %s, %s, %s) "
-                    "ON CONFLICT (key) DO UPDATE SET filename = EXCLUDED.filename, mime = EXCLUDED.mime, "
-                    "size_bytes = EXCLUDED.size_bytes, data = EXCLUDED.data, uploaded_at = EXCLUDED.uploaded_at",
-                    (MENU_FILE_KEY, f.filename, len(raw), raw, now_iso())
-                )
+                conn.execute("DELETE FROM stored_files WHERE key LIKE %s", (MENU_KEY_PREFIX + "%",))
+                stamp = now_iso()
+                for i, (name, mime, raw) in enumerate(files, 1):
+                    conn.execute(
+                        "INSERT INTO stored_files (key, filename, mime, size_bytes, data, uploaded_at) "
+                        "VALUES (%s, %s, %s, %s, %s, %s)",
+                        (f"{MENU_KEY_PREFIX}{i:02d}", name, mime, len(raw), raw, stamp)
+                    )
                 conn.commit()
                 conn.close()
                 flash("Menu uploaded — customers can now see it under Menu.")
         elif action == "remove_menu":
             conn = db()
-            conn.execute("DELETE FROM stored_files WHERE key = %s", (MENU_FILE_KEY,))
+            conn.execute("DELETE FROM stored_files WHERE key LIKE %s", (MENU_KEY_PREFIX + "%",))
             conn.commit()
             conn.close()
             flash("Menu removed.")
         return redirect(url_for("admin_settings"))
 
-    info = menu_info()
+    files = menu_files()
     uploaded_label = ""
-    if info and info.get("uploaded_at"):
+    if files and files[0].get("uploaded_at"):
         try:
             from zoneinfo import ZoneInfo
             tz = ZoneInfo(get_setting("cal_timezone", "America/New_York") or "America/New_York")
-            uploaded = datetime.fromisoformat(info["uploaded_at"]).replace(tzinfo=timezone.utc).astimezone(tz)
+            uploaded = datetime.fromisoformat(files[0]["uploaded_at"]).replace(tzinfo=timezone.utc).astimezone(tz)
             uploaded_label = uploaded.strftime("%b %d, %Y").replace(" 0", " ")
         except Exception:
             pass
     return render_template(
         "admin_settings.html",
-        menu=info,
-        menu_size=human_size(info["size_bytes"]) if info else "",
+        files=files,
+        is_pdf=bool(files and files[0]["is_pdf"]),
+        menu_size=human_size(sum(f["size_bytes"] or 0 for f in files)),
         menu_uploaded=uploaded_label,
-        menu_pdf_url=menu_pdf_url(info) if info else "",
         menu_page_url=url_for("menu", _external=True),
+        max_files=MENU_MAX_FILES,
     )
 
 
 @app.route("/menu")
 def menu():
-    info = menu_info()
+    files = menu_files()
     return render_template(
         "menu.html",
-        menu=info,
-        pdf_url=menu_pdf_url(info) if info else "",
+        files=files,
+        is_pdf=bool(files and files[0]["is_pdf"]),
         business_name=get_setting("card_business_name", APP_NAME) or APP_NAME,
         phone=get_setting("card_phone", ""),
         is_admin=session.get("role") == "admin",
     )
 
 
-@app.route("/menu.pdf")
-def menu_pdf():
+@app.route("/menu/file/<int:page>")
+def menu_file(page):
     conn = db()
     row = conn.execute(
-        "SELECT filename, data FROM stored_files WHERE key = %s", (MENU_FILE_KEY,)
+        "SELECT filename, mime, data FROM stored_files WHERE key = %s", (f"{MENU_KEY_PREFIX}{page:02d}",)
     ).fetchone()
     conn.close()
     if not row:
         return redirect(url_for("menu"))
-    fname = secure_filename(row["filename"] or "") or "menu.pdf"
-    if not fname.lower().endswith(".pdf"):
-        fname += ".pdf"
-    resp = Response(bytes(row["data"]), mimetype="application/pdf",
+    mime = row["mime"] or "application/octet-stream"
+    ext = MENU_EXTENSIONS.get(mime, "")
+    fname = secure_filename(row["filename"] or "") or f"menu-{page}{ext}"
+    if ext and not fname.lower().endswith(ext) and not (ext == ".jpg" and fname.lower().endswith(".jpeg")):
+        fname += ext
+    resp = Response(bytes(row["data"]), mimetype=mime,
                     headers={"Content-Disposition": f'inline; filename="{fname}"',
-                             "Cache-Control": "no-cache"})
+                             "Cache-Control": "no-cache",
+                             "X-Content-Type-Options": "nosniff"})
     resp.add_etag()
     return resp.make_conditional(request)
 
@@ -1411,7 +1463,7 @@ def card():
         qr_svg=card_qr_svg(card_url),
         is_admin=is_admin,
         back_url=back_url,
-        has_menu=bool(menu_info()),
+        has_menu=bool(menu_files()),
     )
 
 

@@ -4,11 +4,13 @@
 <div class="card" style="text-align:center">
     <h1 style="margin-bottom:2px">Services &amp; Prices</h1>
     <p class="muted" style="margin-top:0">{{ business_name }}</p>
-    {% if menu %}
+    {% if files %}
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-            <a class="btn" href="{{ pdf_url }}" target="_blank" rel="noopener">Open Full Menu</a>
+            {% if is_pdf %}
+                <a class="btn" href="{{ files[0].url }}" target="_blank" rel="noopener">Open Full Menu</a>
+            {% endif %}
             {% if not is_admin %}
-                <a class="btn btn-ghost" href="{{ url_for('intake') }}">Become a Client</a>
+                <a class="btn {{ 'btn-ghost' if is_pdf }}" href="{{ url_for('intake') }}">Become a Client</a>
             {% else %}
                 <a class="btn btn-ghost" href="{{ url_for('admin_settings') }}">Replace Menu</a>
             {% endif %}
@@ -16,16 +18,11 @@
     {% endif %}
 </div>
 
-{% if menu %}
+{% if files and is_pdf %}
     <div class="card" style="padding:12px">
         <p id="menuStatus" class="muted" style="text-align:center;margin:18px 0">Loading menu&hellip;</p>
-        <div id="menuPages" data-src="{{ pdf_url }}"></div>
+        <div id="menuPages" class="menuPages" data-src="{{ files[0].url }}"></div>
     </div>
-    <style>
-        #menuPages canvas{display:block;width:100%;height:auto;border-radius:10px;margin:0 0 12px;
-            box-shadow:0 2px 10px rgba(76,29,149,.10)}
-        #menuPages canvas:last-child{margin-bottom:0}
-    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
     (function(){
@@ -53,12 +50,21 @@
         }).catch(function(){ status.style.display = "block"; fail(); });
     })();
     </script>
+{% elif files %}
+    <div class="card menuPages" style="padding:12px">
+        {% for f in files %}
+            <a href="{{ f.url }}" target="_blank" rel="noopener">
+                <img src="{{ f.url }}" alt="Menu page {{ loop.index }}" {% if not loop.first %}loading="lazy"{% endif %}>
+            </a>
+        {% endfor %}
+        <p class="muted" style="text-align:center;font-size:13px;margin:10px 0 0">Tap a picture to see it full size.</p>
+    </div>
 {% else %}
     <div class="card" style="text-align:center">
         <p style="font-size:40px;margin:4px 0">&#128220;</p>
         <h3>Our menu is coming soon</h3>
         {% if is_admin %}
-            <p class="muted">Upload your services &amp; prices PDF and it will show here for customers.</p>
+            <p class="muted">Upload your services &amp; prices as a PDF or pictures and they will show here for customers.</p>
             <a class="btn" href="{{ url_for('admin_settings') }}">Upload Menu</a>
         {% elif phone %}
             <p class="muted">Call us for services and prices.</p>
@@ -68,4 +74,10 @@
         {% endif %}
     </div>
 {% endif %}
+
+<style>
+    .menuPages canvas,.menuPages img{display:block;width:100%;height:auto;border-radius:10px;margin:0 0 12px;
+        box-shadow:0 2px 10px rgba(76,29,149,.10)}
+    .menuPages a:last-of-type img,.menuPages canvas:last-child{margin-bottom:0}
+</style>
 {% endblock %}

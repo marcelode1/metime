@@ -8,19 +8,31 @@
 
 <div class="card">
     <h2>Menu &mdash; Services &amp; Prices</h2>
-    <p class="muted" style="margin-top:0">Upload a PDF of your menu. Customers see it when they tap <b>Menu</b> in the app, on the home page, and on your business card.</p>
+    <p class="muted" style="margin-top:0">Upload your menu as a <b>PDF</b> or as <b>pictures</b>. Customers see it when they tap <b>Menu</b> in the app, on the home page, and on your business card.</p>
 
-    {% if menu %}
-        <div style="display:flex;align-items:center;gap:14px;background:#f8f4fd;border:1px solid var(--border);border-radius:14px;padding:14px;margin:14px 0 4px">
-            <span style="flex:0 0 46px;height:46px;border-radius:12px;background:#dc2626;color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center">PDF</span>
-            <div style="min-width:0;flex:1">
-                <div style="font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ menu.filename or "menu.pdf" }}</div>
-                <div class="muted" style="font-size:13px">{{ menu_size }}{% if menu_uploaded %} &middot; uploaded {{ menu_uploaded }}{% endif %}</div>
+    {% if files %}
+        {% if is_pdf %}
+            <div style="display:flex;align-items:center;gap:14px;background:#f8f4fd;border:1px solid var(--border);border-radius:14px;padding:14px;margin:14px 0 4px">
+                <span style="flex:0 0 46px;height:46px;border-radius:12px;background:#dc2626;color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center">PDF</span>
+                <div style="min-width:0;flex:1">
+                    <div style="font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ files[0].filename or "menu.pdf" }}</div>
+                    <div class="muted" style="font-size:13px">{{ menu_size }}{% if menu_uploaded %} &middot; uploaded {{ menu_uploaded }}{% endif %}</div>
+                </div>
             </div>
-        </div>
+        {% else %}
+            <div class="menuThumbs">
+                {% for f in files %}
+                    <a href="{{ f.url }}" target="_blank" rel="noopener" title="{{ f.filename }}">
+                        <img src="{{ f.url }}" alt="Menu picture {{ loop.index }}" loading="lazy">
+                        <span>{{ loop.index }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+            <div class="muted" style="font-size:13px">{{ files|length }} picture{{ "s" if files|length != 1 }} &middot; {{ menu_size }}{% if menu_uploaded %} &middot; uploaded {{ menu_uploaded }}{% endif %}</div>
+        {% endif %}
         <div style="display:flex;gap:10px;flex-wrap:wrap">
             <a class="btn btn-ghost" href="{{ url_for('menu') }}">View Menu Page</a>
-            <a class="btn btn-ghost" href="{{ menu_pdf_url }}" target="_blank" rel="noopener">Open PDF</a>
+            {% if is_pdf %}<a class="btn btn-ghost" href="{{ files[0].url }}" target="_blank" rel="noopener">Open PDF</a>{% endif %}
         </div>
     {% else %}
         <p class="pill" style="background:#fef3c7;color:#92400e">No menu uploaded yet</p>
@@ -28,13 +40,14 @@
 
     <form method="post" enctype="multipart/form-data" style="margin-top:18px">
         <input type="hidden" name="action" value="upload_menu">
-        <label for="menuPdf">{% if menu %}Replace with a new PDF{% else %}Choose your menu PDF{% endif %}</label>
-        <input id="menuPdf" type="file" name="menu_pdf" accept="application/pdf,.pdf" required>
-        <p class="muted" style="font-size:13px;margin-top:6px">PDF only, up to 15 MB.</p>
-        <button type="submit">{% if menu %}Upload New Menu{% else %}Upload Menu{% endif %}</button>
+        <label for="menuFile">{% if files %}Replace with a new menu{% else %}Choose your menu{% endif %}</label>
+        <input id="menuFile" type="file" name="menu_file" multiple required
+               accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif">
+        <p class="muted" style="font-size:13px;margin-top:6px">One PDF, or up to {{ max_files }} pictures (JPG, PNG) &mdash; pick several pictures at once for a multi-page menu. Up to 15 MB each.</p>
+        <button type="submit">{% if files %}Upload New Menu{% else %}Upload Menu{% endif %}</button>
     </form>
 
-    {% if menu %}
+    {% if files %}
         <form method="post" onsubmit="return confirm('Remove the menu? Customers will no longer see your services and prices.');">
             <input type="hidden" name="action" value="remove_menu">
             <button type="submit" class="btn-ghost" style="color:var(--danger)">Remove Menu</button>
@@ -53,4 +66,13 @@
         <a class="btn btn-ghost btn-block" style="margin:0;justify-content:flex-start" href="{{ url_for('admin_calendar') }}">&#128197;&nbsp; Calendar &amp; Business Hours</a>
     </div>
 </div>
+
+<style>
+    .menuThumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin:14px 0 8px}
+    .menuThumbs a{position:relative;display:block;aspect-ratio:3/4;border-radius:12px;overflow:hidden;
+        border:1px solid var(--border);background:#f8f4fd}
+    .menuThumbs img{width:100%;height:100%;object-fit:cover;display:block}
+    .menuThumbs span{position:absolute;left:6px;top:6px;background:rgba(42,33,64,.75);color:#fff;font-size:12px;
+        font-weight:800;border-radius:999px;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+</style>
 {% endblock %}
