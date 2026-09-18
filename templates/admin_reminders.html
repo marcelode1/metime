@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Text Reminders - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Text Reminders</h1>
+    <p class="muted">Automatically text each client a reminder <strong>24 hours</strong> and <strong>6 hours</strong> before their appointment.</p>
+    <p>
+        {% if enabled and configured %}
+            <span class="pill" style="background:#dcfce7;color:#166534">● On</span>
+        {% elif enabled and not configured %}
+            <span class="pill" style="background:#fef3c7;color:#92400e">● On, but not configured yet</span>
+        {% else %}
+            <span class="pill" style="background:#f1f5f9;color:#475569">● Off</span>
+        {% endif %}
+    </p>
+</div>
+
+<div class="card">
+    <form method="post">
+        <input type="hidden" name="action" value="save">
+        <label class="checkbox" style="margin:0 0 8px">
+            <input type="checkbox" name="enabled" value="1" {% if enabled %}checked{% endif %}>
+            <span><strong>Send automatic text reminders</strong></span>
+        </label>
+
+        <h3 style="margin-top:18px">Twilio account</h3>
+        <p class="muted" style="margin-top:0">Texts are sent through Twilio. Paste the details from your Twilio Console below.</p>
+        <label>Account SID</label>
+        <input name="twilio_account_sid" value="{{ twilio_account_sid }}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+        <label>Auth Token</label>
+        <input name="twilio_auth_token" type="password" value="" placeholder="{% if token_set %}•••••••• (saved — leave blank to keep){% else %}Your Twilio Auth Token{% endif %}" autocomplete="off">
+        <label>From number (your Twilio number)</label>
+        <input name="twilio_from_number" value="{{ twilio_from_number }}" placeholder="+1512XXXXXXX" inputmode="tel" autocomplete="off">
+
+        <h3 style="margin-top:18px">Message wording</h3>
+        <p class="muted" style="margin-top:0">Available tags: <code>{name}</code> <code>{biz}</code> <code>{service}</code> <code>{date}</code> <code>{time}</code></p>
+        <label>24-hour reminder</label>
+        <textarea name="reminder_24h_template" rows="3">{{ reminder_24h_template }}</textarea>
+        <label>6-hour reminder</label>
+        <textarea name="reminder_6h_template" rows="3">{{ reminder_6h_template }}</textarea>
+
+        <button type="submit">Save Settings</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Send a test text</h3>
+    <p class="muted">Check your Twilio setup by texting yourself. (Save your Twilio details above first.)</p>
+    <form method="post">
+        <input type="hidden" name="action" value="test">
+        <input name="test_phone" type="tel" inputmode="tel" placeholder="Your mobile number">
+        <button type="submit" class="btn-ghost">Send Test Text</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Keep reminders running</h3>
+    <p class="muted">Reminders are checked automatically whenever the app is used. For a quiet day with no activity, also have a free scheduler visit this private link every 15 minutes so no reminder is missed:</p>
+    <input readonly value="{{ cron_url }}" onclick="this.select()" style="font-size:13px">
+    <p class="muted" style="margin-top:8px">Set it up free at <b>cron-job.org</b> or <b>UptimeRobot</b>: create a monitor/job that opens this URL every 15 minutes. Keep the link private — it triggers the reminder run.</p>
+</div>
+
+<div class="card">
+    <details>
+        <summary style="cursor:pointer;font-weight:800">First-time Twilio setup — how to</summary>
+        <ol style="line-height:1.7">
+            <li>Create an account at <b>twilio.com</b> and verify your email &amp; phone.</li>
+            <li>In the Twilio Console, buy a phone number with <b>SMS</b> capability (about $1–2/month).</li>
+            <li>Complete <b>A2P 10DLC registration</b> (required for US texting) — Console will prompt you; approval usually takes a day or two. Without it, US carriers block business texts.</li>
+            <li>From the Console dashboard, copy your <b>Account SID</b> and <b>Auth Token</b> into the fields above, and enter your Twilio number as the <b>From number</b> in <code>+1</code> format.</li>
+            <li>Click <b>Save Settings</b>, send yourself a <b>test text</b>, then turn on <b>Send automatic text reminders</b>.</li>
+        </ol>
+        <p class="muted">Note: clients who marked "no reminders" on their intake are skipped, and every message includes "Reply STOP to opt out." Texting costs about a penny per message on Twilio.</p>
+    </details>
+</div>
+
+<p class="muted"><a href="{{ url_for('admin_calendar') }}">&larr; Back to Calendar</a></p>
+{% endblock %}

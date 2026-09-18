@@ -104,7 +104,7 @@
                             <textarea name="notes" style="min-height:60px">{{ s.appt.notes or '' }}</textarea>
                             <div class="apptActions">
                                 <button type="submit" name="action" value="save" style="margin:0">Save changes</button>
-                                <a class="btn btn-ghost" style="margin:0" href="{{ url_for('admin_appointment_ics', appt_id=s.appt.id) }}">&#128197; Phone calendar</a>
+                                <button type="button" class="btn btn-ghost" style="margin:0" data-ics="{{ url_for('admin_appointment_ics', appt_id=s.appt.id) }}" onclick="saveToPhoneCalendar(this.dataset.ics, this)">&#128197; Phone calendar</button>
                                 <button type="submit" name="action" value="complete" class="btnDone" style="margin:0">&#10003; Completed</button>
                                 <button type="submit" name="action" value="cancel" class="btnCancel" style="margin:0"
                                         onclick="return confirm('Cancel this appointment? The slot will open up again.')">Cancel appt</button>
@@ -225,11 +225,33 @@
         <p style="margin:0 0 4px"><strong>{{ saved_appt.client_name }}</strong> &middot; {{ saved_appt.service or "Appointment" }}</p>
         <p class="muted" style="margin:0 0 14px">{{ selected_label }} &middot; {{ saved_appt.time_label }}</p>
         <p style="margin:0 0 14px">Would you like to save it to your phone's main calendar too? It will come with its own 1-hour reminder.</p>
-        <a class="btn btn-block" style="margin:0 0 10px" href="{{ url_for('admin_appointment_ics', appt_id=saved_appt.id) }}">&#128197; Add to Phone Calendar</a>
+        <button type="button" class="btn btn-block" style="margin:0 0 10px" id="savedAddCal" data-ics="{{ url_for('admin_appointment_ics', appt_id=saved_appt.id) }}">&#128197; Add to Phone Calendar</button>
         <button type="button" class="btn-ghost btn-block" id="savedClose" style="margin:0">Not now</button>
     </div>
 </div>
 {% endif %}
+
+<script>
+function saveToPhoneCalendar(url, btn){
+    if(!url) return;
+    // Trigger the .ics hand-off (add-to-calendar on phones, download on desktop) through a
+    // hidden iframe so the page never navigates away — the staff member stays on the app.
+    var f = document.getElementById("mtIcsFrame");
+    if(!f){
+        f = document.createElement("iframe");
+        f.id = "mtIcsFrame";
+        f.style.display = "none";
+        f.setAttribute("aria-hidden", "true");
+        document.body.appendChild(f);
+    }
+    f.src = url;
+    if(btn){
+        var original = btn.innerHTML;
+        btn.innerHTML = "📅 Saved ✓";
+        setTimeout(function(){ btn.innerHTML = original; }, 2500);
+    }
+}
+</script>
 
 <style>
 .calCard{padding-bottom:14px}
@@ -326,6 +348,15 @@
         }
         document.getElementById("savedClose").addEventListener("click", closeSaved);
         savedOverlay.addEventListener("click", function(e){ if(e.target === savedOverlay) closeSaved(); });
+        var addCalBtn = document.getElementById("savedAddCal");
+        if(addCalBtn){
+            addCalBtn.addEventListener("click", function(){
+                saveToPhoneCalendar(addCalBtn.dataset.ics);
+                // Return to the calendar day (the last app page) instead of stranding
+                // the user on the raw .ics file.
+                setTimeout(closeSaved, 500);
+            });
+        }
     }
 
     // ---------- in-app appointment reminders ----------

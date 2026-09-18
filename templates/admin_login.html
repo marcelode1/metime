@@ -8,6 +8,10 @@
         <input name="email" type="email" value="{{ email or '' }}" required>
         <label>Password</label>
         <input name="password" type="password" autocomplete="current-password" required>
+        <label class="checkbox" style="margin-top:16px">
+            <input type="checkbox" name="stay_logged_in" value="1">
+            <span>Keep me logged in on this device</span>
+        </label>
         <button class="btn-block" type="submit">Log In to Office</button>
     </form>
     <p class="muted" style="margin-top:14px"><a href="{{ url_for('index') }}">Back to client area</a></p>
