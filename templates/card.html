@@ -39,6 +39,7 @@
         .ico.map{background:#ef4444}
         .ico.ig{background:linear-gradient(45deg,#f9ce34,#ee2a7b,#6228d7)}
         .ico.fb{background:#1877f2}
+        .ico.menu{background:#c9a24a}
         .row .t{font-size:17px;font-weight:800;line-height:1.2}
         .row .v{display:block;color:#7c708f;font-weight:600;font-size:14px;margin-top:2px;
                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}
@@ -84,6 +85,10 @@
         </div>
 
         <div class="actions">
+            {% if has_menu %}
+            <a class="row" href="{{ url_for('menu') }}"><span class="ico menu">&#128220;</span>
+                <span><span class="t">Services &amp; Prices</span><span class="v">View our menu</span></span></a>
+            {% endif %}
             {% if d.card_email %}
             <a class="row" href="mailto:{{ d.card_email }}"><span class="ico email">&#9993;</span>
                 <span><span class="t">Email</span><span class="v">{{ d.card_email }}</span></span></a>

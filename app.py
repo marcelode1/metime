@@ -17,6 +17,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "CHANGE_THIS_SECRET_KEY")
 # "Keep me logged in" sessions last this long; otherwise the session ends when the browser closes.
 app.permanent_session_lifetime = timedelta(days=30)
+# Largest upload accepted (the menu PDF is the biggest file we take).
+app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 APP_NAME = os.environ.get("APP_NAME", "MeTime")
@@ -102,6 +104,16 @@ SCHEMA = [
         status TEXT NOT NULL DEFAULT 'booked',
         created_at TEXT,
         updated_at TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS stored_files (
+        key TEXT PRIMARY KEY,
+        filename TEXT,
+        mime TEXT,
+        size_bytes INTEGER,
+        data BYTEA NOT NULL,
+        uploaded_at TEXT
     )
     """,
 ]
@@ -341,7 +353,7 @@ def index():
         return redirect(url_for("admin_dashboard"))
     if session.get("user_id"):
         return redirect(url_for("home"))
-    return render_template("landing.html")
+    return render_template("landing.html", has_menu=bool(menu_info()))
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -1222,6 +1234,129 @@ def admin_reminders():
     )
 
 
+# ---------------------------------------------------------------- settings / service menu
+MENU_FILE_KEY = "menu_pdf"
+MENU_MAX_BYTES = 15 * 1024 * 1024
+
+
+def menu_info():
+    """Metadata of the uploaded services & prices PDF (without the file bytes), or None."""
+    try:
+        conn = db()
+        row = conn.execute(
+            "SELECT filename, size_bytes, uploaded_at FROM stored_files WHERE key = %s", (MENU_FILE_KEY,)
+        ).fetchone()
+        conn.close()
+        return row
+    except Exception:
+        return None
+
+
+def menu_pdf_url(info):
+    # Versioned by upload time so phones never show an old cached menu.
+    version = re.sub(r"[^0-9]", "", (info or {}).get("uploaded_at") or "")[:14]
+    return url_for("menu_pdf", v=version or None)
+
+
+def human_size(n):
+    n = n or 0
+    if n >= 1024 * 1024:
+        return f"{n / (1024 * 1024):.1f} MB"
+    return f"{max(1, round(n / 1024))} KB"
+
+
+@app.errorhandler(413)
+def upload_too_large(e):
+    flash("That file is too large — keep uploads under 15 MB.")
+    return redirect(request.referrer or url_for("index"))
+
+
+@app.route("/admin/settings", methods=["GET", "POST"])
+@admin_required
+def admin_settings():
+    if request.method == "POST":
+        action = request.form.get("action", "")
+        if action == "upload_menu":
+            f = request.files.get("menu_pdf")
+            raw = f.read() if f and f.filename else b""
+            if not raw:
+                flash("Choose a PDF file to upload.")
+            elif b"%PDF" not in raw[:1024]:
+                flash("That file is not a PDF. Please save or export your menu as a PDF and try again.")
+            elif len(raw) > MENU_MAX_BYTES:
+                flash("That PDF is too large — keep it under 15 MB.")
+            else:
+                conn = db()
+                conn.execute(
+                    "INSERT INTO stored_files (key, filename, mime, size_bytes, data, uploaded_at) "
+                    "VALUES (%s, %s, 'application/pdf', %s, %s, %s) "
+                    "ON CONFLICT (key) DO UPDATE SET filename = EXCLUDED.filename, mime = EXCLUDED.mime, "
+                    "size_bytes = EXCLUDED.size_bytes, data = EXCLUDED.data, uploaded_at = EXCLUDED.uploaded_at",
+                    (MENU_FILE_KEY, f.filename, len(raw), raw, now_iso())
+                )
+                conn.commit()
+                conn.close()
+                flash("Menu uploaded — customers can now see it under Menu.")
+        elif action == "remove_menu":
+            conn = db()
+            conn.execute("DELETE FROM stored_files WHERE key = %s", (MENU_FILE_KEY,))
+            conn.commit()
+            conn.close()
+            flash("Menu removed.")
+        return redirect(url_for("admin_settings"))
+
+    info = menu_info()
+    uploaded_label = ""
+    if info and info.get("uploaded_at"):
+        try:
+            from zoneinfo import ZoneInfo
+            tz = ZoneInfo(get_setting("cal_timezone", "America/New_York") or "America/New_York")
+            uploaded = datetime.fromisoformat(info["uploaded_at"]).replace(tzinfo=timezone.utc).astimezone(tz)
+            uploaded_label = uploaded.strftime("%b %d, %Y").replace(" 0", " ")
+        except Exception:
+            pass
+    return render_template(
+        "admin_settings.html",
+        menu=info,
+        menu_size=human_size(info["size_bytes"]) if info else "",
+        menu_uploaded=uploaded_label,
+        menu_pdf_url=menu_pdf_url(info) if info else "",
+        menu_page_url=url_for("menu", _external=True),
+    )
+
+
+@app.route("/menu")
+def menu():
+    info = menu_info()
+    return render_template(
+        "menu.html",
+        menu=info,
+        pdf_url=menu_pdf_url(info) if info else "",
+        business_name=get_setting("card_business_name", APP_NAME) or APP_NAME,
+        phone=get_setting("card_phone", ""),
+        is_admin=session.get("role") == "admin",
+    )
+
+
+@app.route("/menu.pdf")
+def menu_pdf():
+    conn = db()
+    row = conn.execute(
+        "SELECT filename, data FROM stored_files WHERE key = %s", (MENU_FILE_KEY,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return redirect(url_for("menu"))
+    fname = secure_filename(row["filename"] or "") or "menu.pdf"
+    if not fname.lower().endswith(".pdf"):
+        fname += ".pdf"
+    resp = Response(bytes(row["data"]), mimetype="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="{fname}"',
+                             "Cache-Control": "no-cache"})
+    resp.add_etag()
+    return resp.make_conditional(request)
+
+
 # ---------------------------------------------------------------- business card
 @app.route("/admin/card", methods=["GET", "POST"])
 @admin_required
@@ -1276,6 +1411,7 @@ def card():
         qr_svg=card_qr_svg(card_url),
         is_admin=is_admin,
         back_url=back_url,
+        has_menu=bool(menu_info()),
     )
 
 

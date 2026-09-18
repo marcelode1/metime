@@ -34,7 +34,18 @@
                display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
         header .brand{font-weight:900;font-size:20px;letter-spacing:.3px;text-decoration:none;color:#fff;display:flex;align-items:center;gap:10px}
         header .brand img{width:30px;height:30px;border-radius:8px}
-        header nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+        header .headRight{display:flex;align-items:center;gap:8px;min-width:0}
+        header nav{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+        header .gearBtn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;
+               border-radius:12px;color:#fff;background:rgba(255,255,255,.16);text-decoration:none;transition:transform .3s}
+        header .gearBtn:hover{background:rgba(255,255,255,.28);transform:rotate(45deg)}
+        header .gearBtn svg{width:22px;height:22px}
+        @media(max-width:640px){
+            header,header .headRight{align-items:flex-start}
+            header .brand{min-height:40px}
+            header nav{gap:2px}
+            header nav a{padding:7px 8px;font-size:13px}
+        }
         header nav a{color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:8px 11px;border-radius:10px}
         .navMobileOnly{display:none}
         @media(max-width:640px){.navDesktopOnly{display:none}.navMobileOnly{display:inline}}
@@ -69,21 +80,35 @@
         <a class="brand" href="{{ url_for('index') }}">
             <img src="{{ url_for('static', filename='icon-192.png') }}" alt="">{{ app_name }}
         </a>
-        <nav>
+        <div class="headRight">
+            <nav>
+                {% if session_role == 'admin' %}
+                    <a href="{{ url_for('admin_calendar') }}">Calendar</a>
+                    <a href="{{ url_for('admin_reminders') }}">Reminders</a>
+                    <a href="{{ url_for('menu') }}">Menu</a>
+                    <a href="{{ url_for('admin_dashboard') }}">Clients</a>
+                    <a href="{{ url_for('admin_promotions') }}">Promotions</a>
+                    <a class="navDesktopOnly" href="{{ url_for('admin_card') }}">Edit Card</a>
+                    <a class="navMobileOnly" href="{{ url_for('card') }}">Card</a>
+                    <a href="{{ url_for('logout') }}">Log out</a>
+                {% elif session_role == 'client' %}
+                    <a href="{{ url_for('home') }}">Home</a>
+                    <a href="{{ url_for('menu') }}">Menu</a>
+                    <a href="{{ url_for('intake') }}">My Form</a>
+                    <a href="{{ url_for('logout') }}">Log out</a>
+                {% else %}
+                    <a href="{{ url_for('menu') }}">Menu</a>
+                {% endif %}
+            </nav>
             {% if session_role == 'admin' %}
-                <a href="{{ url_for('admin_calendar') }}">Calendar</a>
-                <a href="{{ url_for('admin_reminders') }}">Reminders</a>
-                <a href="{{ url_for('admin_dashboard') }}">Clients</a>
-                <a href="{{ url_for('admin_promotions') }}">Promotions</a>
-                <a class="navDesktopOnly" href="{{ url_for('admin_card') }}">Edit Card</a>
-                <a class="navMobileOnly" href="{{ url_for('card') }}">Card</a>
-                <a href="{{ url_for('logout') }}">Log out</a>
-            {% elif session_role == 'client' %}
-                <a href="{{ url_for('home') }}">Home</a>
-                <a href="{{ url_for('intake') }}">My Form</a>
-                <a href="{{ url_for('logout') }}">Log out</a>
+                <a class="gearBtn" href="{{ url_for('admin_settings') }}" aria-label="Settings" title="Settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </a>
             {% endif %}
-        </nav>
+        </div>
     </header>
     <main>
         {% with messages = get_flashed_messages() %}

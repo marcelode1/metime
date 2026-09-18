@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Settings - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Settings</h1>
+    <p class="muted" style="margin-top:0">Manage your menu and office settings.</p>
+</div>
+
+<div class="card">
+    <h2>Menu &mdash; Services &amp; Prices</h2>
+    <p class="muted" style="margin-top:0">Upload a PDF of your menu. Customers see it when they tap <b>Menu</b> in the app, on the home page, and on your business card.</p>
+
+    {% if menu %}
+        <div style="display:flex;align-items:center;gap:14px;background:#f8f4fd;border:1px solid var(--border);border-radius:14px;padding:14px;margin:14px 0 4px">
+            <span style="flex:0 0 46px;height:46px;border-radius:12px;background:#dc2626;color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center">PDF</span>
+            <div style="min-width:0;flex:1">
+                <div style="font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ menu.filename or "menu.pdf" }}</div>
+                <div class="muted" style="font-size:13px">{{ menu_size }}{% if menu_uploaded %} &middot; uploaded {{ menu_uploaded }}{% endif %}</div>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a class="btn btn-ghost" href="{{ url_for('menu') }}">View Menu Page</a>
+            <a class="btn btn-ghost" href="{{ menu_pdf_url }}" target="_blank" rel="noopener">Open PDF</a>
+        </div>
+    {% else %}
+        <p class="pill" style="background:#fef3c7;color:#92400e">No menu uploaded yet</p>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" style="margin-top:18px">
+        <input type="hidden" name="action" value="upload_menu">
+        <label for="menuPdf">{% if menu %}Replace with a new PDF{% else %}Choose your menu PDF{% endif %}</label>
+        <input id="menuPdf" type="file" name="menu_pdf" accept="application/pdf,.pdf" required>
+        <p class="muted" style="font-size:13px;margin-top:6px">PDF only, up to 15 MB.</p>
+        <button type="submit">{% if menu %}Upload New Menu{% else %}Upload Menu{% endif %}</button>
+    </form>
+
+    {% if menu %}
+        <form method="post" onsubmit="return confirm('Remove the menu? Customers will no longer see your services and prices.');">
+            <input type="hidden" name="action" value="remove_menu">
+            <button type="submit" class="btn-ghost" style="color:var(--danger)">Remove Menu</button>
+        </form>
+    {% endif %}
+
+    <label style="margin-top:20px">Link to share with customers</label>
+    <input readonly value="{{ menu_page_url }}" onclick="this.select()" style="font-size:14px">
+</div>
+
+<div class="card">
+    <h3>More settings</h3>
+    <div style="display:grid;gap:10px">
+        <a class="btn btn-ghost btn-block" style="margin:0;justify-content:flex-start" href="{{ url_for('admin_card') }}">&#128100;&nbsp; Business Card</a>
+        <a class="btn btn-ghost btn-block" style="margin:0;justify-content:flex-start" href="{{ url_for('admin_reminders') }}">&#128172;&nbsp; Text Reminders</a>
+        <a class="btn btn-ghost btn-block" style="margin:0;justify-content:flex-start" href="{{ url_for('admin_calendar') }}">&#128197;&nbsp; Calendar &amp; Business Hours</a>
+    </div>
+</div>
+{% endblock %}

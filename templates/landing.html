@@ -11,6 +11,9 @@
     <p class="muted">Your personal space to book massage sessions, complete your health intake, and stay connected with your therapist.</p>
     <div style="display:grid;gap:10px;max-width:340px;margin:18px auto 0">
         <a class="btn btn-block" href="{{ url_for('intake') }}">Become a Client</a>
+        {% if has_menu %}
+            <a class="btn btn-ghost btn-block" style="margin-top:0" href="{{ url_for('menu') }}">Services &amp; Prices</a>
+        {% endif %}
     </div>
     <p class="muted" style="margin-top:10px">Just fill out a quick intake form &mdash; no account needed.</p>
 </div>
